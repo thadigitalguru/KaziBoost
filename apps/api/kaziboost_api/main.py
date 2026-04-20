@@ -36,6 +36,9 @@ async def request_id_middleware(request: Request, call_next):
     response.headers["x-frame-options"] = "DENY"
     response.headers["referrer-policy"] = "strict-origin-when-cross-origin"
     response.headers["content-security-policy"] = "default-src 'self'"
+    if request.url.path.startswith("/v1/auth"):
+        response.headers["cache-control"] = "no-store"
+        response.headers["pragma"] = "no-cache"
     return response
 
 
