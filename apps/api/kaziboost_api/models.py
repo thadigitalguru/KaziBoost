@@ -164,3 +164,22 @@ class GenerateContentResponse(BaseModel):
     meta_description: str
     body: str
     related_terms: list[str]
+
+
+class WhatsAppIncomingRequest(BaseModel):
+    from_phone: str = Field(min_length=7, max_length=30)
+    message_text: str = Field(min_length=1, max_length=1000)
+    language: str = Field(default="en", min_length=2, max_length=10)
+
+
+class WhatsAppConversationOut(BaseModel):
+    thread_id: str
+    from_phone: str
+    status: str
+    last_message: str
+    assigned_to: str | None = None
+
+
+class WhatsAppConversationListResponse(BaseModel):
+    total: int
+    items: list[WhatsAppConversationOut]

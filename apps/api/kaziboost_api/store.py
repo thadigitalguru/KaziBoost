@@ -91,6 +91,18 @@ class InteractionEvent:
     created_at: str
 
 
+@dataclass
+class WhatsAppConversation:
+    thread_id: str
+    tenant_id: str
+    from_phone: str
+    status: str
+    last_message: str
+    language: str
+    assigned_to: str | None
+    updated_at: str
+
+
 class InMemoryStore:
     def __init__(self, db_path: str | None = None) -> None:
         self.tenants: dict[str, Tenant] = {}
@@ -111,6 +123,9 @@ class InMemoryStore:
 
         self.keyword_workspaces: dict[str, dict[str, list[str]]] = {}
         self.seo_persistence = SEOPersistence(db_path=db_path)
+
+        self.whatsapp_conversations: dict[str, WhatsAppConversation] = {}
+        self.whatsapp_by_tenant: dict[str, list[str]] = {}
 
     @staticmethod
     def _hash_password(password: str) -> str:
@@ -351,6 +366,40 @@ class InMemoryStore:
         self.get_contact(tenant_id, contact_id)
         event_ids = self.interactions_by_contact.get(contact_id, [])
         return [self.interactions[event_id] for event_id in event_ids]
+
+    def ingest_whatsapp_message(self, tenant_id: str, from_phone: str, message_text: str, language: str) -> WhatsAppConversation:
+        existing_thread_id = None
+        for thread_id in self.whatsapp_by_tenant.get(tenant_id, []):
+            thread = self.whatsapp_conversations[thread_id]
+            if thread.from_phone == from_phone:
+                existing_thread_id = thread_id
+                break
+
+        if existing_thread_id:
+            conversation = self.whatsapp_conversations[existing_thread_id]
+            conversation.last_message = message_text
+            conversation.updated_at = self._now_iso()
+            conversation.status = "open"
+            return conversation
+
+        thread_id = str(uuid.uuid4())
+        conversation = WhatsAppConversation(
+            thread_id=thread_id,
+            tenant_id=tenant_id,
+            from_phone=from_phone,
+            status="open",
+            last_message=message_text,
+            language=language,
+            assigned_to=None,
+            updated_at=self._now_iso(),
+        )
+        self.whatsapp_conversations[thread_id] = conversation
+        self.whatsapp_by_tenant.setdefault(tenant_id, []).append(thread_id)
+        return conversation
+
+    def list_whatsapp_conversations(self, tenant_id: str) -> list[WhatsAppConversation]:
+        thread_ids = self.whatsapp_by_tenant.get(tenant_id, [])
+        return [self.whatsapp_conversations[thread_id] for thread_id in thread_ids]
 
     def suggest_keywords(self, seed_query: str, location: str, language: str) -> list[dict[str, str]]:
         seed = seed_query.strip().lower()
