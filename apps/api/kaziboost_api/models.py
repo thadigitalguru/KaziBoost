@@ -1,6 +1,16 @@
 from pydantic import BaseModel, EmailStr, Field
 
 
+class ErrorResponse(BaseModel):
+    detail: str | list[dict] | dict
+    code: str
+    request_id: str | None = None
+
+
+class HealthResponse(BaseModel):
+    status: str
+
+
 class SignUpRequest(BaseModel):
     business_name: str = Field(min_length=2, max_length=120)
     owner_name: str = Field(min_length=2, max_length=120)
@@ -121,9 +131,22 @@ class LeadSubmissionOut(BaseModel):
     contact: ContactOut
 
 
+class ContactTimelineEvent(BaseModel):
+    id: str
+    type: str
+    source: str
+    message: str
+    form_id: str
+    created_at: str
+
+
 class ContactListResponse(BaseModel):
     total: int
     items: list[ContactOut]
+
+
+class ContactTimelineResponse(BaseModel):
+    events: list[ContactTimelineEvent]
 
 
 class KeywordSuggestRequest(BaseModel):
@@ -164,6 +187,17 @@ class GenerateContentResponse(BaseModel):
     meta_description: str
     body: str
     related_terms: list[str]
+
+
+class SaveKeywordsResponse(BaseModel):
+    workspace: str
+    count: int
+    keywords: list[str]
+
+
+class ContentHistoryResponse(BaseModel):
+    total: int
+    items: list[dict]
 
 
 class WhatsAppIncomingRequest(BaseModel):
@@ -229,3 +263,32 @@ class MpesaCallbackRequest(BaseModel):
 class ReportScheduleRequest(BaseModel):
     email: EmailStr
     frequency: str = Field(default="weekly", min_length=4, max_length=20)
+
+
+class ReportScheduleResponse(BaseModel):
+    id: str
+    email: EmailStr
+    frequency: str
+    status: str
+
+
+class AnalyticsKpis(BaseModel):
+    total_leads: int
+    open_conversations: int
+    successful_payments: int
+    published_sites: int
+
+
+class AnalyticsDashboardResponse(BaseModel):
+    kpis: AnalyticsKpis
+
+
+class MpesaCallbackResponse(BaseModel):
+    payment_id: str
+    idempotent: bool
+    status: str
+
+
+class PaymentListResponse(BaseModel):
+    total: int
+    items: list[PaymentOut]

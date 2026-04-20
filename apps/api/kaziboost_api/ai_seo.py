@@ -1,13 +1,16 @@
 from fastapi import APIRouter, Depends, Query
 
 from .auth import get_current_user_and_tenant
+from .contracts import error_responses
 from .models import (
+    ContentHistoryResponse,
     GenerateContentRequest,
     GenerateContentResponse,
     KeywordItem,
     KeywordSuggestRequest,
     KeywordSuggestResponse,
     SaveKeywordsRequest,
+    SaveKeywordsResponse,
 )
 from .store import Tenant, User, store
 
@@ -30,13 +33,13 @@ def suggest_keywords(
     return KeywordSuggestResponse(total=len(keyword_items), items=keyword_items)
 
 
-@router.post("/keywords/save")
+@router.post("/keywords/save", response_model=SaveKeywordsResponse, responses=error_responses(401, 422))
 def save_keywords(
     payload: SaveKeywordsRequest,
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
-) -> dict:
+) -> SaveKeywordsResponse:
     user, _tenant = current
-    return store.save_keywords(tenant_id=user.tenant_id, workspace=payload.workspace, keywords=payload.keywords)
+    return SaveKeywordsResponse(**store.save_keywords(tenant_id=user.tenant_id, workspace=payload.workspace, keywords=payload.keywords))
 
 
 @router.post("/content/generate", response_model=GenerateContentResponse)
@@ -44,7 +47,6 @@ def generate_content(
     payload: GenerateContentRequest,
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> GenerateContentResponse:
-    _user, _tenant = current
     user, _tenant = current
     generated = store.generate_content(
         tenant_id=user.tenant_id,
@@ -57,20 +59,20 @@ def generate_content(
     return GenerateContentResponse(**generated)
 
 
-@router.get("/keywords/workspaces/{workspace}")
+@router.get("/keywords/workspaces/{workspace}", response_model=SaveKeywordsResponse, responses=error_responses(401, 404))
 def get_saved_keywords(
     workspace: str,
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
-) -> dict:
+) -> SaveKeywordsResponse:
     user, _tenant = current
-    return store.get_saved_keywords(tenant_id=user.tenant_id, workspace=workspace)
+    return SaveKeywordsResponse(**store.get_saved_keywords(tenant_id=user.tenant_id, workspace=workspace))
 
 
-@router.get("/content/history")
+@router.get("/content/history", response_model=ContentHistoryResponse, responses=error_responses(401))
 def content_history(
     limit: int = Query(default=20, ge=1, le=100),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
-) -> dict:
+) -> ContentHistoryResponse:
     user, _tenant = current
     items = store.get_generated_content_history(tenant_id=user.tenant_id, limit=limit)
-    return {"total": len(items), "items": items}
+    return ContentHistoryResponse(total=len(items), items=items)

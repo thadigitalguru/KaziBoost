@@ -6,6 +6,8 @@ from .models import (
     CRMFormOut,
     ContactListResponse,
     ContactOut,
+    ContactTimelineEvent,
+    ContactTimelineResponse,
     LeadSubmissionOut,
     LeadSubmitRequest,
 )
@@ -91,24 +93,24 @@ def export_contacts_csv(
     return Response(content=csv_data, media_type="text/csv")
 
 
-@router.get("/contacts/{contact_id}/timeline")
-def contact_timeline(contact_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
+@router.get("/contacts/{contact_id}/timeline", response_model=ContactTimelineResponse)
+def contact_timeline(contact_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> ContactTimelineResponse:
     user, _ = current
     try:
         events = store.get_contact_timeline(tenant_id=user.tenant_id, contact_id=contact_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    return {
-        "events": [
-            {
-                "id": event.id,
-                "type": event.type,
-                "source": event.source,
-                "message": event.message,
-                "form_id": event.form_id,
-                "created_at": event.created_at,
-            }
+    return ContactTimelineResponse(
+        events=[
+            ContactTimelineEvent(
+                id=event.id,
+                type=event.type,
+                source=event.source,
+                message=event.message,
+                form_id=event.form_id,
+                created_at=event.created_at,
+            )
             for event in events
         ]
-    }
+    )

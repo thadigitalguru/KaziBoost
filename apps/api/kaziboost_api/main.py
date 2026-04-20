@@ -1,11 +1,14 @@
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 
 from .ai_seo import router as ai_seo_router
 from .analytics import router as analytics_router
 from .auth import router as auth_router
 from .crm import router as crm_router
+from .errors import http_exception_handler, validation_exception_handler
+from .models import HealthResponse
 from .payments import router as payments_router
 from .sites import router as sites_router
 from .whatsapp import router as whatsapp_router
@@ -19,15 +22,23 @@ app.include_router(whatsapp_router)
 app.include_router(payments_router)
 app.include_router(analytics_router)
 
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
+
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
     request_id = request.headers.get("x-request-id") or str(uuid4())
+    request.state.request_id = request_id
     response = await call_next(request)
     response.headers["x-request-id"] = request_id
+    response.headers["x-content-type-options"] = "nosniff"
+    response.headers["x-frame-options"] = "DENY"
+    response.headers["referrer-policy"] = "strict-origin-when-cross-origin"
+    response.headers["content-security-policy"] = "default-src 'self'"
     return response
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+@app.get("/health", response_model=HealthResponse)
+def health() -> HealthResponse:
+    return HealthResponse(status="ok")
