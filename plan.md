@@ -11,6 +11,9 @@
 - [x] Initial implementation (Slice B baseline: site create, page add, publish, SEO artifacts)
 - [x] Initial implementation (Slice C baseline: CRM forms, lead capture, filtering, timeline, CSV export)
 - [x] Initial implementation (Slice D baseline: keyword suggestions, keyword workspace save, AI content generation)
+- [x] Initial implementation (Slice E baseline: WhatsApp inbound threads, FAQ bot replies, human handoff)
+- [x] Initial implementation (Slice F baseline: M-Pesa initiation, callbacks, idempotency, reconciliation)
+- [x] Initial implementation (Slice 8 baseline: analytics dashboard, CSV export, report scheduling)
 
 ---
 
