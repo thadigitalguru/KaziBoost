@@ -15,6 +15,8 @@
 - [x] Initial implementation (Slice F baseline: M-Pesa initiation, callbacks, idempotency, reconciliation)
 - [x] Initial implementation (Slice 8 baseline: analytics dashboard, CSV export, report scheduling)
 - [x] Hardening pass (auth security controls, M-Pesa input validation, request-id trace header middleware)
+- [x] Hardening build extension (OpenAPI error contracts, response schemas, security headers)
+- [x] Hardening build extension (auth no-store headers, RBAC teammate/role management, logout revocation, readiness endpoint)
 
 ---
 
