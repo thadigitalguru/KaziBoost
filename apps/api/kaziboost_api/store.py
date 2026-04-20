@@ -264,6 +264,9 @@ class InMemoryStore:
         tenant = self.tenants[user.tenant_id]
         return user, tenant
 
+    def revoke_token(self, token: str) -> None:
+        self.tokens.pop(token, None)
+
     def force_expire_token_for_test(self, token: str) -> None:
         session = self.tokens.get(token)
         if not session:

@@ -128,6 +128,12 @@ def update_role(
     return SignUpResponse(user=_user_out(user), tenant=_tenant_out(tenant))
 
 
+@router.post("/logout")
+def logout(token: str = Depends(_require_bearer_token)) -> dict:
+    store.revoke_token(token)
+    return {"status": "logged_out"}
+
+
 @router.get("/me")
 def me(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
     user, tenant = current
