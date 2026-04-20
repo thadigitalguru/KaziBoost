@@ -1,0 +1,45 @@
+version: 1
+default_model: balanced
+
+routing:
+  - task: deep-planning
+    use_model: high-reasoning
+    subagents: [product-strategist, solution-architect, security-compliance-reviewer]
+
+  - task: architecture-and-contracts
+    use_model: high-reasoning
+    subagents: [solution-architect, backend-engineer]
+
+  - task: test-design
+    use_model: high-reasoning
+    subagents: [qa-engineer, backend-engineer, frontend-engineer]
+
+  - task: ui-implementation
+    use_model: balanced
+    subagents: [frontend-engineer]
+
+  - task: api-implementation
+    use_model: balanced
+    subagents: [backend-engineer]
+
+  - task: ai-prompt-tuning-and-evals
+    use_model: high-reasoning
+    subagents: [ai-growth-engineer, qa-engineer]
+
+  - task: repetitive-refactor-lint-doc-cleanup
+    use_model: efficient
+    subagents: [frontend-engineer, backend-engineer]
+
+  - task: security-review
+    use_model: high-reasoning
+    subagents: [security-compliance-reviewer]
+
+policies:
+  - name: approval-required-before-code
+    rule: "No scaffolding or implementation tasks may run until user approval is explicitly recorded."
+
+  - name: tests-first
+    rule: "For every feature slice, test tasks must execute before implementation tasks."
+
+  - name: compliance-gate
+    rule: "Payment/PII touching changes require security-compliance-reviewer sign-off."

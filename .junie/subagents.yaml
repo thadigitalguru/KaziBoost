@@ -1,0 +1,41 @@
+version: 1
+subagents:
+  - id: product-strategist
+    role: Converts business goals into testable product slices and acceptance criteria.
+    inputs: [PRD.md, requirements.md]
+    outputs: [epics, user-stories, acceptance-criteria]
+
+  - id: solution-architect
+    role: Defines bounded contexts, APIs, data models, and integration contracts.
+    inputs: [requirements.md]
+    outputs: [architecture-notes, ADRs, service-contracts]
+
+  - id: frontend-engineer
+    role: Implements Next.js UI, accessibility, and responsive experience.
+    inputs: [stories, design-specs]
+    outputs: [ui-code, component-tests, e2e-flows]
+
+  - id: backend-engineer
+    role: Implements API/domain logic, persistence, and integration adapters.
+    inputs: [contracts, data-models]
+    outputs: [api-code, migrations, unit-integration-tests]
+
+  - id: ai-growth-engineer
+    role: Implements keyword/content AI flows and quality safeguards.
+    inputs: [seo-briefs, prompts, policy-constraints]
+    outputs: [prompt-contracts, generation-services, eval-tests]
+
+  - id: payments-messaging-engineer
+    role: Owns WhatsApp and M-Pesa adapters, webhooks, and idempotent state transitions.
+    inputs: [provider-specs]
+    outputs: [adapter-code, webhook-tests, runbooks]
+
+  - id: qa-engineer
+    role: Designs test plans and enforces tests-first with CI quality gates.
+    inputs: [acceptance-criteria]
+    outputs: [test-suites, coverage-reports]
+
+  - id: security-compliance-reviewer
+    role: Reviews privacy/security/compliance controls and data-handling flows.
+    inputs: [architecture-notes, data-maps]
+    outputs: [risk-register, control-checklist]

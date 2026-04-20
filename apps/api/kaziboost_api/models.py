@@ -1,0 +1,126 @@
+from pydantic import BaseModel, EmailStr, Field
+
+
+class SignUpRequest(BaseModel):
+    business_name: str = Field(min_length=2, max_length=120)
+    owner_name: str = Field(min_length=2, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TenantOut(BaseModel):
+    id: str
+    name: str
+
+
+class UserOut(BaseModel):
+    id: str
+    tenant_id: str
+    owner_name: str
+    email: EmailStr
+    role: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
+    tenant: TenantOut
+
+
+class SignUpResponse(BaseModel):
+    user: UserOut
+    tenant: TenantOut
+
+
+class SiteCreateRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    template_key: str = Field(min_length=2, max_length=80)
+    primary_language: str = Field(min_length=2, max_length=10)
+
+
+class SiteOut(BaseModel):
+    id: str
+    name: str
+    template_key: str
+    primary_language: str
+    status: str
+    published_url: str | None = None
+
+
+class PageCreateRequest(BaseModel):
+    slug: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=2, max_length=140)
+    language: str = Field(min_length=2, max_length=10)
+    body_blocks: list[str] = Field(default_factory=list)
+
+
+class PageOut(BaseModel):
+    id: str
+    site_id: str
+    slug: str
+    title: str
+    language: str
+    body_blocks: list[str]
+
+
+class SEOAssetLinks(BaseModel):
+    sitemap_url: str
+    robots_url: str
+    localbusiness_schema_url: str
+
+
+class PublishResponse(BaseModel):
+    site_id: str
+    status: str
+    published_url: str
+    seo_assets: SEOAssetLinks
+
+
+class CRMFormCreateRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    kind: str = Field(min_length=2, max_length=40)
+    fields: list[str] = Field(default_factory=list)
+
+
+class CRMFormOut(BaseModel):
+    id: str
+    name: str
+    kind: str
+    fields: list[str]
+
+
+class LeadSubmitRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    phone: str = Field(min_length=7, max_length=30)
+    email: EmailStr
+    message: str = Field(min_length=1, max_length=500)
+    source: str = Field(min_length=2, max_length=40)
+    tags: list[str] = Field(default_factory=list)
+
+
+class ContactOut(BaseModel):
+    id: str
+    name: str
+    phone: str
+    email: EmailStr
+    source: str
+    tags: list[str]
+
+
+class LeadSubmissionOut(BaseModel):
+    id: str
+    form_id: str
+    source: str
+    message: str
+    contact: ContactOut
+
+
+class ContactListResponse(BaseModel):
+    total: int
+    items: list[ContactOut]
