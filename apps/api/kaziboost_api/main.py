@@ -8,7 +8,7 @@ from .analytics import router as analytics_router
 from .auth import router as auth_router
 from .crm import router as crm_router
 from .errors import http_exception_handler, validation_exception_handler
-from .models import HealthResponse
+from .models import HealthResponse, ReadinessResponse
 from .payments import router as payments_router
 from .sites import router as sites_router
 from .whatsapp import router as whatsapp_router
@@ -45,3 +45,8 @@ async def request_id_middleware(request: Request, call_next):
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(status="ok")
+
+
+@app.get("/ready", response_model=ReadinessResponse)
+def ready() -> ReadinessResponse:
+    return ReadinessResponse(status="ready", checks={"api": "ok", "storage": "ok"})

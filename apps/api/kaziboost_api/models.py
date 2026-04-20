@@ -11,6 +11,11 @@ class HealthResponse(BaseModel):
     status: str
 
 
+class ReadinessResponse(BaseModel):
+    status: str
+    checks: dict[str, str]
+
+
 class SignUpRequest(BaseModel):
     business_name: str = Field(min_length=2, max_length=120)
     owner_name: str = Field(min_length=2, max_length=120)
