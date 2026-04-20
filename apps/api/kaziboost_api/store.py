@@ -128,6 +128,8 @@ class Payment:
 
 
 class InMemoryStore:
+    ALLOWED_ROLES = {"owner", "manager", "marketer", "support", "viewer"}
+
     def __init__(self, db_path: str | None = None, token_ttl_minutes: int = 60, login_block_minutes: int = 10) -> None:
         self.tenants: dict[str, Tenant] = {}
         self.users_by_id: dict[str, User] = {}
@@ -198,6 +200,38 @@ class InMemoryStore:
         self.users_by_id[user.id] = user
         self.users_by_email[user.email] = user
         return tenant, user
+
+    def create_teammate(self, tenant_id: str, owner_name: str, email: str, password: str, role: str) -> User:
+        normalized_email = email.strip().lower()
+        if normalized_email in self.users_by_email:
+            raise ValueError("Email already exists")
+        if role not in self.ALLOWED_ROLES or role == "owner":
+            raise ValueError("Invalid teammate role")
+        if not self._password_is_strong(password):
+            raise ValueError("Password must include upper/lowercase letters, number, symbol, and be at least 10 chars")
+
+        salt = secrets.token_hex(8)
+        user = User(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            owner_name=owner_name,
+            email=normalized_email,
+            role=role,
+            password_hash=self._hash_password(password, salt),
+            password_salt=salt,
+        )
+        self.users_by_id[user.id] = user
+        self.users_by_email[user.email] = user
+        return user
+
+    def update_user_role(self, tenant_id: str, user_id: str, role: str) -> User:
+        if role not in self.ALLOWED_ROLES:
+            raise ValueError("Invalid role")
+        user = self.users_by_id.get(user_id)
+        if not user or user.tenant_id != tenant_id:
+            raise ValueError("User not found")
+        user.role = role
+        return user
 
     def authenticate(self, email: str, password: str) -> tuple[str, User, Tenant] | None:
         normalized_email = email.strip().lower()

@@ -23,6 +23,17 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class CreateTeammateRequest(BaseModel):
+    owner_name: str = Field(min_length=2, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8)
+    role: str = Field(min_length=2, max_length=30)
+
+
+class UpdateRoleRequest(BaseModel):
+    role: str = Field(min_length=2, max_length=30)
+
+
 class TenantOut(BaseModel):
     id: str
     name: str

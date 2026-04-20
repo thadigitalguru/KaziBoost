@@ -2,7 +2,16 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from .store import Tenant, User
 
-from .models import AuthResponse, LoginRequest, SignUpRequest, SignUpResponse, TenantOut, UserOut
+from .models import (
+    AuthResponse,
+    CreateTeammateRequest,
+    LoginRequest,
+    SignUpRequest,
+    SignUpResponse,
+    TenantOut,
+    UpdateRoleRequest,
+    UserOut,
+)
 from .store import store
 
 
@@ -74,6 +83,49 @@ def get_current_user_and_tenant(token: str = Depends(_require_bearer_token)) -> 
     if not resolved:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     return resolved
+
+
+@router.post("/teammates", response_model=SignUpResponse, status_code=status.HTTP_201_CREATED)
+def create_teammate(
+    payload: CreateTeammateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> SignUpResponse:
+    requester, tenant = current
+    if requester.role != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can create teammates")
+    try:
+        user = store.create_teammate(
+            tenant_id=tenant.id,
+            owner_name=payload.owner_name,
+            email=payload.email,
+            password=payload.password,
+            role=payload.role,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = status.HTTP_409_CONFLICT if "exists" in message.lower() else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status_code, detail=message) from exc
+
+    return SignUpResponse(user=_user_out(user), tenant=_tenant_out(tenant))
+
+
+@router.patch("/users/{user_id}/role", response_model=SignUpResponse)
+def update_role(
+    user_id: str,
+    payload: UpdateRoleRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> SignUpResponse:
+    requester, tenant = current
+    if requester.role != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can update roles")
+    try:
+        user = store.update_user_role(tenant_id=tenant.id, user_id=user_id, role=payload.role)
+    except ValueError as exc:
+        message = str(exc)
+        status_code = status.HTTP_404_NOT_FOUND if "not found" in message.lower() else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status_code, detail=message) from exc
+
+    return SignUpResponse(user=_user_out(user), tenant=_tenant_out(tenant))
 
 
 @router.get("/me")
