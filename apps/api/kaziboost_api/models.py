@@ -205,6 +205,7 @@ class MpesaInitiateRequest(BaseModel):
     amount: int = Field(ge=1)
     currency: str = Field(default="KES", min_length=3, max_length=3)
     reference: str = Field(min_length=2, max_length=80)
+    contact_id: str | None = None
 
 
 class PaymentOut(BaseModel):
@@ -214,4 +215,12 @@ class PaymentOut(BaseModel):
     amount: int
     currency: str
     reference: str
+    status: str
+    contact_id: str | None = None
+    provider_tx_id: str | None = None
+
+
+class MpesaCallbackRequest(BaseModel):
+    payment_id: str
+    provider_tx_id: str
     status: str

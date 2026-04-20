@@ -114,6 +114,8 @@ class Payment:
     reference: str
     status: str
     created_at: str
+    contact_id: str | None = None
+    provider_tx_id: str | None = None
 
 
 class InMemoryStore:
@@ -449,7 +451,15 @@ class InMemoryStore:
         conversation.updated_at = self._now_iso()
         return conversation
 
-    def initiate_mpesa_payment(self, tenant_id: str, phone: str, amount: int, currency: str, reference: str) -> Payment:
+    def initiate_mpesa_payment(
+        self,
+        tenant_id: str,
+        phone: str,
+        amount: int,
+        currency: str,
+        reference: str,
+        contact_id: str | None = None,
+    ) -> Payment:
         payment = Payment(
             payment_id=str(uuid.uuid4()),
             tenant_id=tenant_id,
@@ -460,9 +470,27 @@ class InMemoryStore:
             reference=reference,
             status="pending",
             created_at=self._now_iso(),
+            contact_id=contact_id,
+            provider_tx_id=None,
         )
         self.payments[payment.payment_id] = payment
         return payment
+
+    def apply_mpesa_callback(self, tenant_id: str, payment_id: str, provider_tx_id: str, status: str) -> dict[str, object]:
+        payment = self.get_payment(tenant_id=tenant_id, payment_id=payment_id)
+        if payment.provider_tx_id == provider_tx_id:
+            return {"payment": payment, "idempotent": True}
+
+        payment.provider_tx_id = provider_tx_id
+        payment.status = status
+        return {"payment": payment, "idempotent": False}
+
+    def list_payments_by_contact(self, tenant_id: str, contact_id: str) -> list[Payment]:
+        return [
+            payment
+            for payment in self.payments.values()
+            if payment.tenant_id == tenant_id and payment.contact_id == contact_id
+        ]
 
     def get_payment(self, tenant_id: str, payment_id: str) -> Payment:
         payment = self.payments.get(payment_id)
