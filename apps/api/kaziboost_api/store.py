@@ -3,10 +3,13 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import os
 import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+
+from .seo_persistence import SEOPersistence
 
 
 @dataclass
@@ -89,7 +92,7 @@ class InteractionEvent:
 
 
 class InMemoryStore:
-    def __init__(self) -> None:
+    def __init__(self, db_path: str | None = None) -> None:
         self.tenants: dict[str, Tenant] = {}
         self.users_by_id: dict[str, User] = {}
         self.users_by_email: dict[str, User] = {}
@@ -107,6 +110,7 @@ class InMemoryStore:
         self.interactions_by_contact: dict[str, list[str]] = {}
 
         self.keyword_workspaces: dict[str, dict[str, list[str]]] = {}
+        self.seo_persistence = SEOPersistence(db_path=db_path)
 
     @staticmethod
     def _hash_password(password: str) -> str:
@@ -389,14 +393,20 @@ class InMemoryStore:
         return items
 
     def save_keywords(self, tenant_id: str, workspace: str, keywords: list[str]) -> dict[str, object]:
+        persisted = self.seo_persistence.save_keywords(tenant_id=tenant_id, workspace=workspace, keywords=keywords)
         tenant_workspaces = self.keyword_workspaces.setdefault(tenant_id, {})
-        existing = set(tenant_workspaces.get(workspace, []))
-        existing.update(keyword.strip() for keyword in keywords if keyword.strip())
-        tenant_workspaces[workspace] = sorted(existing)
-        return {"workspace": workspace, "count": len(tenant_workspaces[workspace]), "keywords": tenant_workspaces[workspace]}
+        tenant_workspaces[workspace] = persisted
+        return {"workspace": workspace, "count": len(persisted), "keywords": persisted}
+
+    def get_saved_keywords(self, tenant_id: str, workspace: str) -> dict[str, object]:
+        keywords = self.seo_persistence.get_keywords(tenant_id=tenant_id, workspace=workspace)
+        tenant_workspaces = self.keyword_workspaces.setdefault(tenant_id, {})
+        tenant_workspaces[workspace] = keywords
+        return {"workspace": workspace, "count": len(keywords), "keywords": keywords}
 
     def generate_content(
         self,
+        tenant_id: str,
         keyword: str,
         content_type: str,
         tone: str,
@@ -426,15 +436,25 @@ class InMemoryStore:
             meta_title = f"{keyword_clean} | KaziBoost"
             meta_description = f"Learn how {keyword_clean} helps Kenyan SMEs improve SEO, leads, and conversions."
 
-        return {
+        content = {
+            "id": str(uuid.uuid4()),
+            "tenant_id": tenant_id,
             "keyword": keyword_clean,
+            "content_type": content_type,
+            "tone": tone,
             "language": language,
+            "length": length,
             "title": title,
             "meta_title": meta_title,
             "meta_description": meta_description,
             "body": body,
             "related_terms": related_terms,
         }
+        self.seo_persistence.save_generated_content(content)
+        return content
+
+    def get_generated_content_history(self, tenant_id: str, limit: int = 20) -> list[dict[str, object]]:
+        return self.seo_persistence.list_generated_content(tenant_id=tenant_id, limit=limit)
 
 
-store = InMemoryStore()
+store = InMemoryStore(db_path=os.getenv("KAZIBOOST_DB_PATH"))

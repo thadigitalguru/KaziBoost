@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from .auth import get_current_user_and_tenant
 from .models import (
@@ -45,7 +45,9 @@ def generate_content(
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> GenerateContentResponse:
     _user, _tenant = current
+    user, _tenant = current
     generated = store.generate_content(
+        tenant_id=user.tenant_id,
         keyword=payload.keyword,
         content_type=payload.content_type,
         tone=payload.tone,
@@ -53,3 +55,22 @@ def generate_content(
         length=payload.length,
     )
     return GenerateContentResponse(**generated)
+
+
+@router.get("/keywords/workspaces/{workspace}")
+def get_saved_keywords(
+    workspace: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _tenant = current
+    return store.get_saved_keywords(tenant_id=user.tenant_id, workspace=workspace)
+
+
+@router.get("/content/history")
+def content_history(
+    limit: int = Query(default=20, ge=1, le=100),
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _tenant = current
+    items = store.get_generated_content_history(tenant_id=user.tenant_id, limit=limit)
+    return {"total": len(items), "items": items}
