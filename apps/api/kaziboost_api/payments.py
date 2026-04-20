@@ -8,6 +8,13 @@ from .store import Tenant, User, store
 router = APIRouter(prefix="/v1/payments", tags=["payments"])
 
 
+def _validate_mpesa_input(phone: str, currency: str) -> None:
+    if currency.upper() != "KES":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="M-Pesa only supports KES")
+    if not phone.startswith("+254"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="M-Pesa phone must use Kenyan +254 format")
+
+
 def _payment_out(payment) -> PaymentOut:
     return PaymentOut(
         payment_id=payment.payment_id,
@@ -28,6 +35,7 @@ def initiate_mpesa(
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> PaymentOut:
     user, _tenant = current
+    _validate_mpesa_input(phone=payload.phone, currency=payload.currency)
     payment = store.initiate_mpesa_payment(
         tenant_id=user.tenant_id,
         phone=payload.phone,
@@ -45,6 +53,8 @@ def mpesa_callback(
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> dict:
     user, _tenant = current
+    if payload.status not in {"success", "failed", "pending"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment callback status")
     try:
         result = store.apply_mpesa_callback(
             tenant_id=user.tenant_id,
