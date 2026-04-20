@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from uuid import uuid4
+
+from fastapi import FastAPI, Request
 
 from .ai_seo import router as ai_seo_router
 from .analytics import router as analytics_router
@@ -16,6 +18,14 @@ app.include_router(ai_seo_router)
 app.include_router(whatsapp_router)
 app.include_router(payments_router)
 app.include_router(analytics_router)
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get("x-request-id") or str(uuid4())
+    response = await call_next(request)
+    response.headers["x-request-id"] = request_id
+    return response
 
 
 @app.get("/health")
