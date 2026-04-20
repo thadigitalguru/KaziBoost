@@ -106,6 +106,8 @@ class InMemoryStore:
         self.interactions: dict[str, InteractionEvent] = {}
         self.interactions_by_contact: dict[str, list[str]] = {}
 
+        self.keyword_workspaces: dict[str, dict[str, list[str]]] = {}
+
     @staticmethod
     def _hash_password(password: str) -> str:
         return hashlib.sha256(password.encode("utf-8")).hexdigest()
@@ -345,6 +347,94 @@ class InMemoryStore:
         self.get_contact(tenant_id, contact_id)
         event_ids = self.interactions_by_contact.get(contact_id, [])
         return [self.interactions[event_id] for event_id in event_ids]
+
+    def suggest_keywords(self, seed_query: str, location: str, language: str) -> list[dict[str, str]]:
+        seed = seed_query.strip().lower()
+        loc = location.strip()
+
+        patterns = [
+            (f"best {seed} {loc}", "transactional", "high"),
+            (f"affordable {seed} {loc}", "transactional", "medium"),
+            (f"{seed} near me {loc}", "transactional", "high"),
+            (f"top-rated {seed} {loc}", "transactional", "medium"),
+            (f"{seed} open now {loc}", "navigational", "medium"),
+            (f"trusted {seed} {loc}", "transactional", "low"),
+            (f"{seed} services in {loc}", "informational", "medium"),
+            (f"how much is {seed} in {loc}", "informational", "medium"),
+            (f"{seed} price in {loc}", "informational", "high"),
+            (f"{seed} offers {loc}", "transactional", "low"),
+            (f"{seed} recommendations {loc}", "informational", "low"),
+            (f"fast {seed} {loc}", "transactional", "low"),
+            (f"reliable {seed} {loc}", "transactional", "low"),
+            (f"{seed} contacts {loc}", "navigational", "medium"),
+            (f"{seed} reviews {loc}", "informational", "medium"),
+            (f"{seed} deals {loc}", "transactional", "low"),
+            (f"{seed} same day {loc}", "transactional", "low"),
+            (f"{seed} experts {loc}", "informational", "low"),
+            (f"book {seed} {loc}", "transactional", "medium"),
+            (f"{seed} whatsapp {loc}", "navigational", "medium"),
+            (f"{seed} mpesa payment {loc}", "transactional", "low"),
+            (f"{seed} swahili huduma {loc}", "informational", "low"),
+        ]
+
+        items = [
+            {"keyword": keyword, "intent": intent, "volume_band": volume}
+            for keyword, intent, volume in patterns
+        ]
+
+        if language == "sw":
+            items.append({"keyword": f"{seed} bora {loc}", "intent": "transactional", "volume_band": "medium"})
+            items.append({"keyword": f"huduma ya {seed} {loc}", "intent": "informational", "volume_band": "low"})
+
+        return items
+
+    def save_keywords(self, tenant_id: str, workspace: str, keywords: list[str]) -> dict[str, object]:
+        tenant_workspaces = self.keyword_workspaces.setdefault(tenant_id, {})
+        existing = set(tenant_workspaces.get(workspace, []))
+        existing.update(keyword.strip() for keyword in keywords if keyword.strip())
+        tenant_workspaces[workspace] = sorted(existing)
+        return {"workspace": workspace, "count": len(tenant_workspaces[workspace]), "keywords": tenant_workspaces[workspace]}
+
+    def generate_content(
+        self,
+        keyword: str,
+        content_type: str,
+        tone: str,
+        language: str,
+        length: str,
+    ) -> dict[str, object]:
+        keyword_clean = keyword.strip()
+        related_terms = [f"{keyword_clean} price", f"{keyword_clean} near me", f"{keyword_clean} tips"]
+
+        if language == "sw":
+            title = f"Mwongozo wa {keyword_clean} kwa Biashara za Kenya"
+            body = (
+                f"Karibu kwenye mwongozo wetu wa {keyword_clean}. "
+                f"Makala hii inaelezea mbinu za vitendo za kuboresha mwonekano wa biashara yako mtandaoni, "
+                f"kupata leads zaidi, na kuongeza mauzo kwa kutumia SEO ya ndani. "
+                f"Mtindo: {tone}. Urefu: {length}. Aina: {content_type}."
+            )
+            meta_title = f"{keyword_clean} | KaziBoost Kenya"
+            meta_description = f"Jifunze jinsi ya kutumia {keyword_clean} kuongeza leads na mauzo kwa biashara yako Kenya."
+        else:
+            title = f"{keyword_clean}: Practical Growth Guide for Kenyan SMEs"
+            body = (
+                f"This guide explains how to use {keyword_clean} to improve local search visibility, "
+                f"attract qualified leads, and convert more customers through mobile-first journeys. "
+                f"Tone: {tone}. Length: {length}. Type: {content_type}."
+            )
+            meta_title = f"{keyword_clean} | KaziBoost"
+            meta_description = f"Learn how {keyword_clean} helps Kenyan SMEs improve SEO, leads, and conversions."
+
+        return {
+            "keyword": keyword_clean,
+            "language": language,
+            "title": title,
+            "meta_title": meta_title,
+            "meta_description": meta_description,
+            "body": body,
+            "related_terms": related_terms,
+        }
 
 
 store = InMemoryStore()

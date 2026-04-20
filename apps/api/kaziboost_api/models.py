@@ -124,3 +124,43 @@ class LeadSubmissionOut(BaseModel):
 class ContactListResponse(BaseModel):
     total: int
     items: list[ContactOut]
+
+
+class KeywordSuggestRequest(BaseModel):
+    seed_query: str = Field(min_length=2, max_length=120)
+    location: str = Field(min_length=2, max_length=80)
+    language: str = Field(default="en", min_length=2, max_length=10)
+
+
+class KeywordItem(BaseModel):
+    keyword: str
+    intent: str
+    volume_band: str
+
+
+class KeywordSuggestResponse(BaseModel):
+    total: int
+    items: list[KeywordItem]
+
+
+class SaveKeywordsRequest(BaseModel):
+    workspace: str = Field(min_length=2, max_length=80)
+    keywords: list[str] = Field(default_factory=list)
+
+
+class GenerateContentRequest(BaseModel):
+    keyword: str = Field(min_length=2, max_length=120)
+    content_type: str = Field(default="blog", min_length=2, max_length=40)
+    tone: str = Field(default="conversational", min_length=2, max_length=40)
+    language: str = Field(default="en", min_length=2, max_length=10)
+    length: str = Field(default="medium", min_length=2, max_length=20)
+
+
+class GenerateContentResponse(BaseModel):
+    keyword: str
+    language: str
+    title: str
+    meta_title: str
+    meta_description: str
+    body: str
+    related_terms: list[str]
