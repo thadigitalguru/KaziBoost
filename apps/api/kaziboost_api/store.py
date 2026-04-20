@@ -103,6 +103,19 @@ class WhatsAppConversation:
     updated_at: str
 
 
+@dataclass
+class Payment:
+    payment_id: str
+    tenant_id: str
+    provider: str
+    phone: str
+    amount: int
+    currency: str
+    reference: str
+    status: str
+    created_at: str
+
+
 class InMemoryStore:
     def __init__(self, db_path: str | None = None) -> None:
         self.tenants: dict[str, Tenant] = {}
@@ -127,6 +140,8 @@ class InMemoryStore:
         self.whatsapp_conversations: dict[str, WhatsAppConversation] = {}
         self.whatsapp_by_tenant: dict[str, list[str]] = {}
         self.whatsapp_faq_by_tenant: dict[str, list[dict[str, str]]] = {}
+
+        self.payments: dict[str, Payment] = {}
 
     @staticmethod
     def _hash_password(password: str) -> str:
@@ -433,6 +448,27 @@ class InMemoryStore:
         conversation.assigned_to = assigned_to
         conversation.updated_at = self._now_iso()
         return conversation
+
+    def initiate_mpesa_payment(self, tenant_id: str, phone: str, amount: int, currency: str, reference: str) -> Payment:
+        payment = Payment(
+            payment_id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            provider="mpesa",
+            phone=phone,
+            amount=amount,
+            currency=currency,
+            reference=reference,
+            status="pending",
+            created_at=self._now_iso(),
+        )
+        self.payments[payment.payment_id] = payment
+        return payment
+
+    def get_payment(self, tenant_id: str, payment_id: str) -> Payment:
+        payment = self.payments.get(payment_id)
+        if not payment or payment.tenant_id != tenant_id:
+            raise ValueError("Payment not found")
+        return payment
 
     def suggest_keywords(self, seed_query: str, location: str, language: str) -> list[dict[str, str]]:
         seed = seed_query.strip().lower()

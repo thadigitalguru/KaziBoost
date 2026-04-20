@@ -198,3 +198,20 @@ class WhatsAppBotReplyResponse(BaseModel):
 
 class WhatsAppHandoffRequest(BaseModel):
     assigned_to: str = Field(min_length=2, max_length=80)
+
+
+class MpesaInitiateRequest(BaseModel):
+    phone: str = Field(min_length=7, max_length=30)
+    amount: int = Field(ge=1)
+    currency: str = Field(default="KES", min_length=3, max_length=3)
+    reference: str = Field(min_length=2, max_length=80)
+
+
+class PaymentOut(BaseModel):
+    payment_id: str
+    provider: str
+    phone: str
+    amount: int
+    currency: str
+    reference: str
+    status: str
