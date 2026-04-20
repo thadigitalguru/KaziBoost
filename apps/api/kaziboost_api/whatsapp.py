@@ -1,7 +1,14 @@
 from fastapi import APIRouter, Depends, status
 
 from .auth import get_current_user_and_tenant
-from .models import WhatsAppConversationListResponse, WhatsAppConversationOut, WhatsAppIncomingRequest
+from .models import (
+    WhatsAppBotReplyResponse,
+    WhatsAppConversationListResponse,
+    WhatsAppConversationOut,
+    WhatsAppFAQCreateRequest,
+    WhatsAppHandoffRequest,
+    WhatsAppIncomingRequest,
+)
 from .store import Tenant, User, store
 
 
@@ -46,3 +53,39 @@ def list_conversations(
         for item in conversations
     ]
     return WhatsAppConversationListResponse(total=len(items), items=items)
+
+
+@router.post("/faq", status_code=status.HTTP_201_CREATED)
+def add_faq(
+    payload: WhatsAppFAQCreateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _tenant = current
+    return store.add_whatsapp_faq(tenant_id=user.tenant_id, question=payload.question, answer=payload.answer)
+
+
+@router.post("/conversations/{thread_id}/reply-bot", response_model=WhatsAppBotReplyResponse)
+def bot_reply(
+    thread_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> WhatsAppBotReplyResponse:
+    user, _tenant = current
+    reply = store.whatsapp_bot_reply(tenant_id=user.tenant_id, thread_id=thread_id)
+    return WhatsAppBotReplyResponse(**reply)
+
+
+@router.post("/conversations/{thread_id}/handoff", response_model=WhatsAppConversationOut)
+def handoff(
+    thread_id: str,
+    payload: WhatsAppHandoffRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> WhatsAppConversationOut:
+    user, _tenant = current
+    conversation = store.whatsapp_handoff(tenant_id=user.tenant_id, thread_id=thread_id, assigned_to=payload.assigned_to)
+    return WhatsAppConversationOut(
+        thread_id=conversation.thread_id,
+        from_phone=conversation.from_phone,
+        status=conversation.status,
+        last_message=conversation.last_message,
+        assigned_to=conversation.assigned_to,
+    )

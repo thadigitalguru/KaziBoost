@@ -126,6 +126,7 @@ class InMemoryStore:
 
         self.whatsapp_conversations: dict[str, WhatsAppConversation] = {}
         self.whatsapp_by_tenant: dict[str, list[str]] = {}
+        self.whatsapp_faq_by_tenant: dict[str, list[dict[str, str]]] = {}
 
     @staticmethod
     def _hash_password(password: str) -> str:
@@ -400,6 +401,38 @@ class InMemoryStore:
     def list_whatsapp_conversations(self, tenant_id: str) -> list[WhatsAppConversation]:
         thread_ids = self.whatsapp_by_tenant.get(tenant_id, [])
         return [self.whatsapp_conversations[thread_id] for thread_id in thread_ids]
+
+    def add_whatsapp_faq(self, tenant_id: str, question: str, answer: str) -> dict[str, str]:
+        item = {"question": question, "answer": answer}
+        self.whatsapp_faq_by_tenant.setdefault(tenant_id, []).append(item)
+        return item
+
+    def whatsapp_bot_reply(self, tenant_id: str, thread_id: str) -> dict[str, str]:
+        conversation = self.whatsapp_conversations.get(thread_id)
+        if not conversation or conversation.tenant_id != tenant_id:
+            raise ValueError("Conversation not found")
+
+        message = conversation.last_message.lower()
+        faq_items = self.whatsapp_faq_by_tenant.get(tenant_id, [])
+        for faq in faq_items:
+            question = faq["question"].lower()
+            if any(token in question for token in message.split() if len(token) > 3):
+                return {"mode": "bot", "reply_text": faq["answer"], "thread_id": thread_id}
+
+        return {
+            "mode": "handoff_required",
+            "reply_text": "I need a human teammate to help with this request.",
+            "thread_id": thread_id,
+        }
+
+    def whatsapp_handoff(self, tenant_id: str, thread_id: str, assigned_to: str) -> WhatsAppConversation:
+        conversation = self.whatsapp_conversations.get(thread_id)
+        if not conversation or conversation.tenant_id != tenant_id:
+            raise ValueError("Conversation not found")
+        conversation.status = "handoff"
+        conversation.assigned_to = assigned_to
+        conversation.updated_at = self._now_iso()
+        return conversation
 
     def suggest_keywords(self, seed_query: str, location: str, language: str) -> list[dict[str, str]]:
         seed = seed_query.strip().lower()

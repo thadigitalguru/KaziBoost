@@ -183,3 +183,18 @@ class WhatsAppConversationOut(BaseModel):
 class WhatsAppConversationListResponse(BaseModel):
     total: int
     items: list[WhatsAppConversationOut]
+
+
+class WhatsAppFAQCreateRequest(BaseModel):
+    question: str = Field(min_length=2, max_length=300)
+    answer: str = Field(min_length=2, max_length=500)
+
+
+class WhatsAppBotReplyResponse(BaseModel):
+    mode: str
+    reply_text: str
+    thread_id: str
+
+
+class WhatsAppHandoffRequest(BaseModel):
+    assigned_to: str = Field(min_length=2, max_length=80)
