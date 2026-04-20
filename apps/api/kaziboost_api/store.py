@@ -4,10 +4,11 @@ import csv
 import hashlib
 import io
 import os
+import re
 import secrets
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from .seo_persistence import SEOPersistence
 
@@ -26,6 +27,14 @@ class User:
     email: str
     role: str
     password_hash: str
+    password_salt: str
+
+
+@dataclass
+class TokenSession:
+    token: str
+    user_id: str
+    expires_at: datetime
 
 
 @dataclass
@@ -119,11 +128,14 @@ class Payment:
 
 
 class InMemoryStore:
-    def __init__(self, db_path: str | None = None) -> None:
+    def __init__(self, db_path: str | None = None, token_ttl_minutes: int = 60, login_block_minutes: int = 10) -> None:
         self.tenants: dict[str, Tenant] = {}
         self.users_by_id: dict[str, User] = {}
         self.users_by_email: dict[str, User] = {}
-        self.tokens: dict[str, str] = {}
+        self.tokens: dict[str, TokenSession] = {}
+        self.token_ttl_minutes = token_ttl_minutes
+        self.login_block_minutes = login_block_minutes
+        self.login_failures: dict[str, dict[str, object]] = {}
 
         self.sites: dict[str, Site] = {}
         self.pages: dict[str, Page] = {}
@@ -147,8 +159,18 @@ class InMemoryStore:
         self.report_schedules: dict[str, list[dict[str, str]]] = {}
 
     @staticmethod
-    def _hash_password(password: str) -> str:
-        return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    def _hash_password(password: str, salt: str) -> str:
+        return hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _password_is_strong(password: str) -> bool:
+        return bool(
+            len(password) >= 10
+            and re.search(r"[A-Z]", password)
+            and re.search(r"[a-z]", password)
+            and re.search(r"\d", password)
+            and re.search(r"[^A-Za-z0-9]", password)
+        )
 
     @staticmethod
     def _now_iso() -> str:
@@ -158,15 +180,19 @@ class InMemoryStore:
         normalized_email = email.strip().lower()
         if normalized_email in self.users_by_email:
             raise ValueError("Email already exists")
+        if not self._password_is_strong(password):
+            raise ValueError("Password must include upper/lowercase letters, number, symbol, and be at least 10 chars")
 
         tenant = Tenant(id=str(uuid.uuid4()), name=business_name)
+        salt = secrets.token_hex(8)
         user = User(
             id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             owner_name=owner_name,
             email=normalized_email,
             role="owner",
-            password_hash=self._hash_password(password),
+            password_hash=self._hash_password(password, salt),
+            password_salt=salt,
         )
         self.tenants[tenant.id] = tenant
         self.users_by_id[user.id] = user
@@ -175,24 +201,40 @@ class InMemoryStore:
 
     def authenticate(self, email: str, password: str) -> tuple[str, User, Tenant] | None:
         normalized_email = email.strip().lower()
+        tracker = self.login_failures.get(normalized_email)
+        if tracker and tracker.get("blocked_until") and datetime.now(tz=UTC) < tracker["blocked_until"]:
+            raise PermissionError("Too many failed login attempts. Try again later.")
+
         user = self.users_by_email.get(normalized_email)
-        if not user:
-            return None
-        if user.password_hash != self._hash_password(password):
+        if not user or user.password_hash != self._hash_password(password, user.password_salt):
+            failure = self.login_failures.setdefault(normalized_email, {"count": 0, "blocked_until": None})
+            failure["count"] = int(failure["count"]) + 1
+            if int(failure["count"]) >= 5:
+                failure["blocked_until"] = datetime.now(tz=UTC) + timedelta(minutes=self.login_block_minutes)
             return None
 
+        self.login_failures.pop(normalized_email, None)
         tenant = self.tenants[user.tenant_id]
         token = secrets.token_urlsafe(24)
-        self.tokens[token] = user.id
+        expires_at = datetime.now(tz=UTC) + timedelta(minutes=self.token_ttl_minutes)
+        self.tokens[token] = TokenSession(token=token, user_id=user.id, expires_at=expires_at)
         return token, user, tenant
 
     def resolve_token(self, token: str) -> tuple[User, Tenant] | None:
-        user_id = self.tokens.get(token)
-        if not user_id:
+        session = self.tokens.get(token)
+        if not session:
             return None
-        user = self.users_by_id[user_id]
+        if datetime.now(tz=UTC) > session.expires_at:
+            raise PermissionError("Token expired")
+        user = self.users_by_id[session.user_id]
         tenant = self.tenants[user.tenant_id]
         return user, tenant
+
+    def force_expire_token_for_test(self, token: str) -> None:
+        session = self.tokens.get(token)
+        if not session:
+            return
+        session.expires_at = datetime.now(tz=UTC) - timedelta(seconds=1)
 
     def create_site(self, tenant_id: str, name: str, template_key: str, primary_language: str) -> Site:
         site = Site(

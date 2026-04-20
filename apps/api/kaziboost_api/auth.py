@@ -33,14 +33,21 @@ def signup(payload: SignUpRequest) -> SignUpResponse:
             password=payload.password,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        message = str(exc)
+        if "already exists" in message.lower():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=message) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
 
     return SignUpResponse(user=_user_out(user), tenant=_tenant_out(tenant))
 
 
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest) -> AuthResponse:
-    result = store.authenticate(payload.email, payload.password)
+    try:
+        result = store.authenticate(payload.email, payload.password)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
+
     if not result:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
@@ -59,7 +66,11 @@ def _require_bearer_token(authorization: str | None = Header(default=None)) -> s
 
 
 def get_current_user_and_tenant(token: str = Depends(_require_bearer_token)) -> tuple[User, Tenant]:
-    resolved = store.resolve_token(token)
+    try:
+        resolved = store.resolve_token(token)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+
     if not resolved:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     return resolved
