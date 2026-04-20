@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from .ai_seo import router as ai_seo_router
+from .analytics import router as analytics_router
 from .auth import router as auth_router
 from .crm import router as crm_router
 from .payments import router as payments_router
@@ -14,6 +15,7 @@ app.include_router(crm_router)
 app.include_router(ai_seo_router)
 app.include_router(whatsapp_router)
 app.include_router(payments_router)
+app.include_router(analytics_router)
 
 
 @app.get("/health")

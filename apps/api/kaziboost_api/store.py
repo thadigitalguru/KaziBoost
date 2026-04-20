@@ -144,6 +144,7 @@ class InMemoryStore:
         self.whatsapp_faq_by_tenant: dict[str, list[dict[str, str]]] = {}
 
         self.payments: dict[str, Payment] = {}
+        self.report_schedules: dict[str, list[dict[str, str]]] = {}
 
     @staticmethod
     def _hash_password(password: str) -> str:
@@ -601,6 +602,48 @@ class InMemoryStore:
 
     def get_generated_content_history(self, tenant_id: str, limit: int = 20) -> list[dict[str, object]]:
         return self.seo_persistence.list_generated_content(tenant_id=tenant_id, limit=limit)
+
+    def analytics_dashboard(self, tenant_id: str) -> dict[str, int]:
+        total_leads = len(self.contacts_by_tenant.get(tenant_id, []))
+        open_conversations = len(
+            [
+                thread_id
+                for thread_id in self.whatsapp_by_tenant.get(tenant_id, [])
+                if self.whatsapp_conversations[thread_id].status == "open"
+            ]
+        )
+        successful_payments = len(
+            [payment for payment in self.payments.values() if payment.tenant_id == tenant_id and payment.status == "success"]
+        )
+        published_sites = len(
+            [site for site in self.sites.values() if site.tenant_id == tenant_id and site.status == "published"]
+        )
+        return {
+            "total_leads": total_leads,
+            "open_conversations": open_conversations,
+            "successful_payments": successful_payments,
+            "published_sites": published_sites,
+        }
+
+    def analytics_export_csv(self, tenant_id: str) -> str:
+        metrics = self.analytics_dashboard(tenant_id=tenant_id)
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["metric", "value"])
+        for metric, value in metrics.items():
+            writer.writerow([metric, value])
+        return output.getvalue()
+
+    def schedule_report(self, tenant_id: str, email: str, frequency: str) -> dict[str, str]:
+        schedule = {
+            "id": str(uuid.uuid4()),
+            "tenant_id": tenant_id,
+            "email": email,
+            "frequency": frequency,
+            "status": "scheduled",
+        }
+        self.report_schedules.setdefault(tenant_id, []).append(schedule)
+        return schedule
 
 
 store = InMemoryStore(db_path=os.getenv("KAZIBOOST_DB_PATH"))

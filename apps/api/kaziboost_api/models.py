@@ -224,3 +224,8 @@ class MpesaCallbackRequest(BaseModel):
     payment_id: str
     provider_tx_id: str
     status: str
+
+
+class ReportScheduleRequest(BaseModel):
+    email: EmailStr
+    frequency: str = Field(default="weekly", min_length=4, max_length=20)
