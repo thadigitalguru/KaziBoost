@@ -14,6 +14,7 @@
 - [x] Initial implementation (Slice E baseline: WhatsApp inbound threads, FAQ bot replies, human handoff)
 - [x] Initial implementation (Slice F baseline: M-Pesa initiation, callbacks, idempotency, reconciliation)
 - [x] Initial implementation (Slice 8 baseline: analytics dashboard, CSV export, report scheduling)
+- [x] Hardening pass (auth security controls, M-Pesa input validation, request-id trace header middleware)
 
 ---
 
