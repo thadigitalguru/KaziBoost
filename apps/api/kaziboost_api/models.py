@@ -419,6 +419,11 @@ class RefundListResponse(BaseModel):
     items: list[RefundOut]
 
 
+class PaymentsSummaryResponse(BaseModel):
+    totals: dict[str, int]
+    by_status: dict[str, dict[str, int]]
+
+
 class AuditEventOut(BaseModel):
     id: str
     event_type: str

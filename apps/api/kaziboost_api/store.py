@@ -935,6 +935,16 @@ class InMemoryStore:
         refund_ids = self.refunds_by_payment.get(payment_id, [])
         return [self.payment_refunds[refund_id] for refund_id in refund_ids]
 
+    def payments_summary(self, tenant_id: str) -> dict[str, object]:
+        items = [payment for payment in self.payments.values() if payment.tenant_id == tenant_id]
+        totals = {"count": len(items), "amount": sum(item.amount for item in items)}
+        by_status: dict[str, dict[str, int]] = {}
+        for payment in items:
+            agg = by_status.setdefault(payment.status, {"count": 0, "amount": 0})
+            agg["count"] += 1
+            agg["amount"] += payment.amount
+        return {"totals": totals, "by_status": by_status}
+
     def suggest_keywords(self, seed_query: str, location: str, language: str) -> list[dict[str, str]]:
         seed = seed_query.strip().lower()
         loc = location.strip()

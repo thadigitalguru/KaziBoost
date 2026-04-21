@@ -8,6 +8,7 @@ from .models import (
     MpesaInitiateRequest,
     PaymentListResponse,
     PaymentOut,
+    PaymentsSummaryResponse,
     RefundListResponse,
     RefundOut,
     RefundRequest,
@@ -177,6 +178,14 @@ def list_refunds(
         for refund in refunds
     ]
     return RefundListResponse(total=len(items), items=items)
+
+
+@router.get("/summary", response_model=PaymentsSummaryResponse)
+def payments_summary(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> PaymentsSummaryResponse:
+    user, _tenant = current
+    return PaymentsSummaryResponse(**store.payments_summary(tenant_id=user.tenant_id))
 
 
 @router.get("/{payment_id}", response_model=PaymentOut, responses=error_responses(401, 404))
