@@ -102,19 +102,32 @@ class SEOPersistence:
                 ),
             )
 
-    def list_generated_content(self, tenant_id: str, limit: int = 20) -> list[dict[str, object]]:
+    def list_generated_content(self, tenant_id: str, limit: int = 20, language: str | None = None) -> list[dict[str, object]]:
         with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT id, keyword, content_type, tone, language, length, title,
-                       meta_title, meta_description, body, related_terms, created_at
-                FROM seo_generated_content
-                WHERE tenant_id = ?
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (tenant_id, limit),
-            ).fetchall()
+            if language:
+                rows = conn.execute(
+                    """
+                    SELECT id, keyword, content_type, tone, language, length, title,
+                           meta_title, meta_description, body, related_terms, created_at
+                    FROM seo_generated_content
+                    WHERE tenant_id = ? AND language = ?
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                    """,
+                    (tenant_id, language, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT id, keyword, content_type, tone, language, length, title,
+                           meta_title, meta_description, body, related_terms, created_at
+                    FROM seo_generated_content
+                    WHERE tenant_id = ?
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                    """,
+                    (tenant_id, limit),
+                ).fetchall()
 
         return [
             {

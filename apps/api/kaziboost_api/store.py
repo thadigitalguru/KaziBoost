@@ -1239,8 +1239,13 @@ class InMemoryStore:
         self.seo_persistence.save_generated_content(content)
         return content
 
-    def get_generated_content_history(self, tenant_id: str, limit: int = 20) -> list[dict[str, object]]:
-        return self.seo_persistence.list_generated_content(tenant_id=tenant_id, limit=limit)
+    def get_generated_content_history(
+        self,
+        tenant_id: str,
+        limit: int = 20,
+        language: str | None = None,
+    ) -> list[dict[str, object]]:
+        return self.seo_persistence.list_generated_content(tenant_id=tenant_id, limit=limit, language=language)
 
     def create_content_calendar_item(
         self,
