@@ -150,6 +150,12 @@ def segment_contacts(segment_id: str, current: tuple[User, Tenant] = Depends(get
     return ContactListResponse(total=len(contacts), items=contacts)
 
 
+@router.get("/analytics/lead-sources")
+def lead_sources_summary(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
+    user, _ = current
+    return store.lead_sources_summary(tenant_id=user.tenant_id)
+
+
 @router.post("/campaigns/send", response_model=CampaignSendResponse, status_code=status.HTTP_201_CREATED)
 def send_campaign(
     payload: CampaignSendRequest,
