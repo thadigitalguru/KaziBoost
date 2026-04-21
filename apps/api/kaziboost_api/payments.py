@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from .auth import get_current_user_and_tenant
 from .contracts import error_responses
 from .models import MpesaCallbackRequest, MpesaCallbackResponse, MpesaInitiateRequest, PaymentListResponse, PaymentOut
 from .store import Tenant, User, store
+from .payments_security import verify_mpesa_callback_signature
 
 
 router = APIRouter(prefix="/v1/payments", tags=["payments"])
@@ -56,11 +57,20 @@ def initiate_mpesa(
 @router.post("/mpesa/callback", response_model=MpesaCallbackResponse, responses=error_responses(400, 401, 404))
 def mpesa_callback(
     payload: MpesaCallbackRequest,
+    x_callback_signature: str = Header(alias="x-callback-signature"),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> MpesaCallbackResponse:
     user, _tenant = current
     if payload.status not in {"success", "failed", "pending"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment callback status")
+    if not verify_mpesa_callback_signature(
+        signature=x_callback_signature,
+        payment_id=payload.payment_id,
+        provider_tx_id=payload.provider_tx_id,
+        status=payload.status,
+    ):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid callback signature")
+
     try:
         result = store.apply_mpesa_callback(
             tenant_id=user.tenant_id,
@@ -69,6 +79,8 @@ def mpesa_callback(
             status=payload.status,
         )
     except ValueError as exc:
+        if "state transition" in str(exc).lower():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     return MpesaCallbackResponse(

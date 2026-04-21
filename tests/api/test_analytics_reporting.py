@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from kaziboost_api.main import app
+from kaziboost_api.payments_security import build_mpesa_callback_signature
 from kaziboost_api.whatsapp_security import build_whatsapp_signature
 
 
@@ -57,10 +58,12 @@ def test_dashboard_kpis_show_leads_conversations_and_sales():
         headers=headers,
         json={"phone": "+254700999103", "amount": 5000, "currency": "KES", "reference": "SALE-1"},
     ).json()
+    callback_payload = {"payment_id": payment["payment_id"], "provider_tx_id": "MP-TX-A1", "status": "success"}
+    callback_sig = build_mpesa_callback_signature(**callback_payload)
     client.post(
         "/v1/payments/mpesa/callback",
-        headers=headers,
-        json={"payment_id": payment["payment_id"], "provider_tx_id": "MP-TX-A1", "status": "success"},
+        headers={**headers, "x-callback-signature": callback_sig},
+        json=callback_payload,
     )
 
     dashboard = client.get("/v1/analytics/dashboard", headers=headers)

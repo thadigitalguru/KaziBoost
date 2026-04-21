@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from kaziboost_api.main import app
+from kaziboost_api.payments_security import build_mpesa_callback_signature
 
 
 client = TestClient(app)
@@ -36,15 +37,17 @@ def test_mpesa_callback_is_idempotent_for_duplicate_events():
         },
     ).json()
 
+    callback_payload = {"payment_id": payment["payment_id"], "provider_tx_id": "MPESA-TX-1", "status": "success"}
+    callback_sig = build_mpesa_callback_signature(**callback_payload)
     first = client.post(
         "/v1/payments/mpesa/callback",
-        headers=headers,
-        json={"payment_id": payment["payment_id"], "provider_tx_id": "MPESA-TX-1", "status": "success"},
+        headers={**headers, "x-callback-signature": callback_sig},
+        json=callback_payload,
     )
     duplicate = client.post(
         "/v1/payments/mpesa/callback",
-        headers=headers,
-        json={"payment_id": payment["payment_id"], "provider_tx_id": "MPESA-TX-1", "status": "success"},
+        headers={**headers, "x-callback-signature": callback_sig},
+        json=callback_payload,
     )
 
     assert first.status_code == 200
@@ -71,10 +74,12 @@ def test_reconciliation_lists_payments_for_contact():
         },
     ).json()
 
+    callback_payload = {"payment_id": created["payment_id"], "provider_tx_id": "MPESA-TX-2", "status": "success"}
+    callback_sig = build_mpesa_callback_signature(**callback_payload)
     client.post(
         "/v1/payments/mpesa/callback",
-        headers=headers,
-        json={"payment_id": created["payment_id"], "provider_tx_id": "MPESA-TX-2", "status": "success"},
+        headers={**headers, "x-callback-signature": callback_sig},
+        json=callback_payload,
     )
 
     reconciliation = client.get("/v1/payments/reconciliation?contact_id=contact-220", headers=headers)

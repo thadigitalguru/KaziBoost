@@ -575,6 +575,9 @@ class InMemoryStore:
         if payment.provider_tx_id == provider_tx_id:
             return {"payment": payment, "idempotent": True}
 
+        if payment.status in {"success", "failed"} and status != payment.status:
+            raise ValueError("Invalid payment state transition")
+
         payment.provider_tx_id = provider_tx_id
         payment.status = status
         return {"payment": payment, "idempotent": False}
