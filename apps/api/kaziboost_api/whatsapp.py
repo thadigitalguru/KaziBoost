@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
 from .auth import get_current_user_and_tenant
 from .models import (
@@ -78,10 +78,11 @@ def incoming_webhook(
 
 @router.get("/conversations", response_model=WhatsAppConversationListResponse)
 def list_conversations(
+    status: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppConversationListResponse:
     user, _tenant = current
-    conversations = store.list_whatsapp_conversations(tenant_id=user.tenant_id)
+    conversations = store.list_whatsapp_conversations(tenant_id=user.tenant_id, status=status)
     items = [
         WhatsAppConversationOut(
             thread_id=item.thread_id,
@@ -123,6 +124,46 @@ def handoff(
 ) -> WhatsAppConversationOut:
     user, _tenant = current
     conversation = store.whatsapp_handoff(tenant_id=user.tenant_id, thread_id=thread_id, assigned_to=payload.assigned_to)
+    return WhatsAppConversationOut(
+        thread_id=conversation.thread_id,
+        from_phone=conversation.from_phone,
+        status=conversation.status,
+        last_message=conversation.last_message,
+        assigned_to=conversation.assigned_to,
+        idempotent=False,
+    )
+
+
+@router.post("/conversations/{thread_id}/close", response_model=WhatsAppConversationOut)
+def close_conversation(
+    thread_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> WhatsAppConversationOut:
+    user, _tenant = current
+    try:
+        conversation = store.set_whatsapp_status(tenant_id=user.tenant_id, thread_id=thread_id, status="closed")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return WhatsAppConversationOut(
+        thread_id=conversation.thread_id,
+        from_phone=conversation.from_phone,
+        status=conversation.status,
+        last_message=conversation.last_message,
+        assigned_to=conversation.assigned_to,
+        idempotent=False,
+    )
+
+
+@router.post("/conversations/{thread_id}/reopen", response_model=WhatsAppConversationOut)
+def reopen_conversation(
+    thread_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> WhatsAppConversationOut:
+    user, _tenant = current
+    try:
+        conversation = store.set_whatsapp_status(tenant_id=user.tenant_id, thread_id=thread_id, status="open")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return WhatsAppConversationOut(
         thread_id=conversation.thread_id,
         from_phone=conversation.from_phone,

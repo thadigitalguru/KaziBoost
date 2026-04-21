@@ -664,9 +664,20 @@ class InMemoryStore:
         processed[event_id] = thread_id
         return conversation, False
 
-    def list_whatsapp_conversations(self, tenant_id: str) -> list[WhatsAppConversation]:
+    def list_whatsapp_conversations(self, tenant_id: str, status: str | None = None) -> list[WhatsAppConversation]:
         thread_ids = self.whatsapp_by_tenant.get(tenant_id, [])
-        return [self.whatsapp_conversations[thread_id] for thread_id in thread_ids]
+        items = [self.whatsapp_conversations[thread_id] for thread_id in thread_ids]
+        if status:
+            items = [item for item in items if item.status == status]
+        return items
+
+    def set_whatsapp_status(self, tenant_id: str, thread_id: str, status: str) -> WhatsAppConversation:
+        conversation = self.whatsapp_conversations.get(thread_id)
+        if not conversation or conversation.tenant_id != tenant_id:
+            raise ValueError("Conversation not found")
+        conversation.status = status
+        conversation.updated_at = self._now_iso()
+        return conversation
 
     def add_whatsapp_faq(self, tenant_id: str, question: str, answer: str) -> dict[str, str]:
         item = {"question": question, "answer": answer}
