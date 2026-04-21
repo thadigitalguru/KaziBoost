@@ -1,0 +1,22 @@
+--- a/pi-extension/companion.mjs
++++ b/pi-extension/companion.mjs
+@@ -90,7 +90,7 @@
+ 
+ // Place the window top-center of the *active* screen, in the global
+ // coordinate space (macOS uses bottom-left origin; larger y = further up).
+-const x = Math.round(screenX + (screenW - WIN_W) / 2);
++const x = Math.round(screenX + screenW - WIN_W); // far-right of the active screen
+ const y = Math.round(screenY + screenH - WIN_H);
+ 
+ const autoMode = notchH > 0 ? "notch" : "normal";
+--- a/pi-extension/island.html.mjs
++++ b/pi-extension/island.html.mjs
+@@ -42,7 +42,7 @@
+   top: 0; left: 0; right: 0;
+   display: flex;
+   flex-direction: column;
+-  align-items: center;
++  align-items: flex-end;
+   gap: 0;
+   padding: 0;
+   /* No shadow on the container — drop-shadow on the whole stack bleeds
