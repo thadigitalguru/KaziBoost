@@ -1443,8 +1443,8 @@ class InMemoryStore:
         article.views += 1
         return article
 
-    def top_training_articles(self, tenant_id: str, limit: int = 10) -> list[TrainingArticle]:
-        items = self.list_training_articles(tenant_id=tenant_id)
+    def top_training_articles(self, tenant_id: str, limit: int = 10, category: str | None = None) -> list[TrainingArticle]:
+        items = self.list_training_articles(tenant_id=tenant_id, category=category)
         return sorted(items, key=lambda x: x.views, reverse=True)[:limit]
 
     def analytics_export_csv(self, tenant_id: str) -> str:
