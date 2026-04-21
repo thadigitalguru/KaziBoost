@@ -232,3 +232,11 @@ def overdue_queue(
         for item in store.overdue_whatsapp_queue(tenant_id=user.tenant_id)
     ]
     return WhatsAppConversationListResponse(total=len(items), items=items)
+
+
+@router.get("/stats/sla")
+def sla_stats(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _tenant = current
+    return store.whatsapp_sla_stats(tenant_id=user.tenant_id)

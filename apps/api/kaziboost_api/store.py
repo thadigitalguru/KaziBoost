@@ -837,6 +837,14 @@ class InMemoryStore:
         items = self.list_whatsapp_conversations(tenant_id=tenant_id, status="open")
         return [item for item in items if item.assigned_to is None]
 
+    def whatsapp_sla_stats(self, tenant_id: str) -> dict[str, dict[str, int]]:
+        items = self.list_whatsapp_conversations(tenant_id=tenant_id)
+        totals = {"all": len(items), "open": 0, "handoff": 0, "closed": 0}
+        for item in items:
+            if item.status in totals:
+                totals[item.status] += 1
+        return {"totals": totals}
+
     def add_whatsapp_faq(self, tenant_id: str, question: str, answer: str) -> dict[str, str]:
         item = {"question": question, "answer": answer}
         self.whatsapp_faq_by_tenant.setdefault(tenant_id, []).append(item)
