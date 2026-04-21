@@ -26,6 +26,7 @@
 - [x] Next execution build set (CRM notes, WhatsApp assignment mgmt, failed-payment reason logs, SEO workspace deletion, training views/top content)
 - [x] Latest execution set (lead source analytics, reminder sent lifecycle, payments CSV export, due-content calendar view, dashboard trend snapshot)
 - [x] Current execution set (CRM tag analytics, WhatsApp FAQ listing, reconciliation status filters, SEO calendar deletion, training category filters)
+- [x] New execution set (campaign history channel filters, WhatsApp phone filters, payment failure reason filters, SEO content history language filters, training top-category filters)
 
 ---
 
