@@ -607,12 +607,20 @@ class InMemoryStore:
         self.interactions_by_contact.setdefault(contact.id, []).append(interaction.id)
         return interaction, contact
 
-    def list_contacts(self, tenant_id: str, source: str | None = None, tag: str | None = None) -> list[Contact]:
+    def list_contacts(
+        self,
+        tenant_id: str,
+        source: str | None = None,
+        tag: str | None = None,
+        email_marketing: bool | None = None,
+    ) -> list[Contact]:
         items = [self.contacts[contact_id] for contact_id in self.contacts_by_tenant.get(tenant_id, [])]
         if source:
             items = [contact for contact in items if contact.source == source]
         if tag:
             items = [contact for contact in items if tag in contact.tags]
+        if email_marketing is not None:
+            items = [contact for contact in items if contact.consent.get("email_marketing") is email_marketing]
         return items
 
     def export_contacts_csv(self, tenant_id: str, source: str | None = None, tag: str | None = None) -> str:

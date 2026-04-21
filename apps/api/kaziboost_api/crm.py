@@ -88,10 +88,16 @@ def submit_form(
 def list_contacts(
     source: str | None = Query(default=None),
     tag: str | None = Query(default=None),
+    email_marketing: bool | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> ContactListResponse:
     user, _ = current
-    items = store.list_contacts(tenant_id=user.tenant_id, source=source, tag=tag)
+    items = store.list_contacts(
+        tenant_id=user.tenant_id,
+        source=source,
+        tag=tag,
+        email_marketing=email_marketing,
+    )
     response_items = [_contact_out(contact) for contact in items]
     return ContactListResponse(total=len(response_items), items=response_items)
 
