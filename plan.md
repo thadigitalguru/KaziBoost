@@ -18,6 +18,7 @@
 - [x] Hardening build extension (OpenAPI error contracts, response schemas, security headers)
 - [x] Hardening build extension (auth no-store headers, RBAC teammate/role management, logout revocation, readiness endpoint)
 - [x] Post-hardening build set (audit events feed, report schedule lifecycle, SEO safety guardrails, hreflang map, onboarding checklist)
+- [x] Expansion build set (CRM segments, WhatsApp status transitions, refunds, analytics funnel, training knowledge base)
 
 ---
 
