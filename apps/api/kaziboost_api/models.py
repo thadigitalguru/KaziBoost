@@ -300,6 +300,11 @@ class ReportScheduleResponse(BaseModel):
     status: str
 
 
+class ReportScheduleListResponse(BaseModel):
+    total: int
+    items: list[ReportScheduleResponse]
+
+
 class AnalyticsKpis(BaseModel):
     total_leads: int
     open_conversations: int

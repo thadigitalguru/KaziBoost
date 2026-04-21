@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from .auth import get_current_user_and_tenant
 from .contracts import error_responses
-from .models import AnalyticsDashboardResponse, ReportScheduleRequest, ReportScheduleResponse
+from .models import AnalyticsDashboardResponse, ReportScheduleListResponse, ReportScheduleRequest, ReportScheduleResponse
 from .store import Tenant, User, store
 
 
@@ -45,3 +45,25 @@ def schedule_report(
         frequency=scheduled["frequency"],
         status=scheduled["status"],
     )
+
+
+@router.get("/reports/schedules", response_model=ReportScheduleListResponse)
+def list_schedules(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> ReportScheduleListResponse:
+    user, _tenant = current
+    items = [ReportScheduleResponse(**item) for item in store.list_report_schedules(tenant_id=user.tenant_id)]
+    return ReportScheduleListResponse(total=len(items), items=items)
+
+
+@router.delete("/reports/schedules/{schedule_id}", response_model=ReportScheduleResponse, responses=error_responses(404))
+def cancel_schedule(
+    schedule_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> ReportScheduleResponse:
+    user, _tenant = current
+    try:
+        item = store.cancel_report_schedule(tenant_id=user.tenant_id, schedule_id=schedule_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return ReportScheduleResponse(**item)
