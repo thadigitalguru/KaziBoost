@@ -213,3 +213,22 @@ def reminder_history(
         for item in store.list_whatsapp_reminders(tenant_id=user.tenant_id)
     ]
     return WhatsAppReminderListResponse(total=len(items), items=items)
+
+
+@router.get("/queue/overdue", response_model=WhatsAppConversationListResponse)
+def overdue_queue(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> WhatsAppConversationListResponse:
+    user, _tenant = current
+    items = [
+        WhatsAppConversationOut(
+            thread_id=item.thread_id,
+            from_phone=item.from_phone,
+            status=item.status,
+            last_message=item.last_message,
+            assigned_to=item.assigned_to,
+            idempotent=False,
+        )
+        for item in store.overdue_whatsapp_queue(tenant_id=user.tenant_id)
+    ]
+    return WhatsAppConversationListResponse(total=len(items), items=items)

@@ -822,6 +822,10 @@ class InMemoryStore:
         ids = self.whatsapp_reminders_by_tenant.get(tenant_id, [])
         return [self.whatsapp_reminders[item_id] for item_id in reversed(ids)]
 
+    def overdue_whatsapp_queue(self, tenant_id: str) -> list[WhatsAppConversation]:
+        items = self.list_whatsapp_conversations(tenant_id=tenant_id, status="open")
+        return [item for item in items if item.assigned_to is None]
+
     def add_whatsapp_faq(self, tenant_id: str, question: str, answer: str) -> dict[str, str]:
         item = {"question": question, "answer": answer}
         self.whatsapp_faq_by_tenant.setdefault(tenant_id, []).append(item)
