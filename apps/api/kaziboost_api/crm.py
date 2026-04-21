@@ -8,6 +8,7 @@ from .models import (
     CampaignHistoryResponse,
     CampaignSendRequest,
     CampaignSendResponse,
+    CampaignStatsResponse,
     ContactConsentUpdateRequest,
     ContactExportResponse,
     ContactListResponse,
@@ -164,6 +165,12 @@ def campaign_history(current: tuple[User, Tenant] = Depends(get_current_user_and
         for item in store.campaign_history(tenant_id=user.tenant_id)
     ]
     return CampaignHistoryResponse(total=len(items), items=items)
+
+
+@router.get("/campaigns/stats", response_model=CampaignStatsResponse)
+def campaign_stats(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> CampaignStatsResponse:
+    user, _ = current
+    return CampaignStatsResponse(**store.campaign_stats(tenant_id=user.tenant_id))
 
 
 @router.patch("/contacts/{contact_id}/consent")

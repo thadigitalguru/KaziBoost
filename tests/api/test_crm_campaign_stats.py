@@ -46,12 +46,12 @@ def test_campaign_stats_channel_breakdown_and_recipients():
     client.post(
         "/v1/crm/campaigns/send",
         headers=headers,
-        json={"channel": "email", "subject": "Offer A", "message": "A", "tag": "vip"},
+        json={"channel": "email", "subject": "Offer A", "message": "Offer message A", "tag": "vip"},
     )
     client.post(
         "/v1/crm/campaigns/send",
         headers=headers,
-        json={"channel": "sms", "subject": "Offer B", "message": "B", "tag": "vip"},
+        json={"channel": "sms", "subject": "Offer B", "message": "Offer message B", "tag": "vip"},
     )
 
     stats = client.get("/v1/crm/campaigns/stats", headers=headers)

@@ -228,6 +228,12 @@ class CampaignHistoryResponse(BaseModel):
     items: list[CampaignHistoryItem]
 
 
+class CampaignStatsResponse(BaseModel):
+    total_campaigns: int
+    total_recipients: int
+    by_channel: dict[str, int]
+
+
 class KeywordSuggestRequest(BaseModel):
     seed_query: str = Field(min_length=2, max_length=120)
     location: str = Field(min_length=2, max_length=80)

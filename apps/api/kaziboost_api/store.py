@@ -674,6 +674,19 @@ class InMemoryStore:
         ids = self.campaigns_by_tenant.get(tenant_id, [])
         return [self.campaign_dispatches[c_id] for c_id in reversed(ids)]
 
+    def campaign_stats(self, tenant_id: str) -> dict[str, object]:
+        items = self.campaign_history(tenant_id=tenant_id)
+        by_channel: dict[str, int] = {}
+        total_recipients = 0
+        for item in items:
+            by_channel[item.channel] = by_channel.get(item.channel, 0) + 1
+            total_recipients += item.recipients
+        return {
+            "total_campaigns": len(items),
+            "total_recipients": total_recipients,
+            "by_channel": by_channel,
+        }
+
     def get_contact(self, tenant_id: str, contact_id: str) -> Contact:
         contact = self.contacts.get(contact_id)
         if not contact or contact.tenant_id != tenant_id:
