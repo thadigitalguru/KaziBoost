@@ -32,7 +32,29 @@ def create_article(
         content=article.content,
         category=article.category,
         featured=article.featured,
+        views=article.views,
     )
+
+
+@router.get("/articles/top", response_model=TrainingArticleListResponse)
+def top_articles(
+    limit: int = Query(default=10, ge=1, le=50),
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> TrainingArticleListResponse:
+    user, _tenant = current
+    items = store.top_training_articles(tenant_id=user.tenant_id, limit=limit)
+    results = [
+        TrainingArticleOut(
+            id=item.id,
+            title=item.title,
+            content=item.content,
+            category=item.category,
+            featured=item.featured,
+            views=item.views,
+        )
+        for item in items
+    ]
+    return TrainingArticleListResponse(total=len(results), items=results)
 
 
 @router.get("/articles", response_model=TrainingArticleListResponse)
@@ -49,6 +71,7 @@ def list_articles(
             content=item.content,
             category=item.category,
             featured=item.featured,
+            views=item.views,
         )
         for item in items
     ]
@@ -69,10 +92,31 @@ def search_articles(
             content=item.content,
             category=item.category,
             featured=item.featured,
+            views=item.views,
         )
         for item in items
     ]
     return TrainingArticleListResponse(total=len(results), items=results)
+
+
+@router.get("/articles/{article_id}", response_model=TrainingArticleOut)
+def get_article(
+    article_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> TrainingArticleOut:
+    user, _tenant = current
+    try:
+        item = store.get_training_article(tenant_id=user.tenant_id, article_id=article_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return TrainingArticleOut(
+        id=item.id,
+        title=item.title,
+        content=item.content,
+        category=item.category,
+        featured=item.featured,
+        views=item.views,
+    )
 
 
 @router.patch("/articles/{article_id}", response_model=TrainingArticleOut)
@@ -99,6 +143,7 @@ def update_article(
         content=item.content,
         category=item.category,
         featured=item.featured,
+        views=item.views,
     )
 
 

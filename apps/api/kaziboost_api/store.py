@@ -203,6 +203,7 @@ class TrainingArticle:
     category: str
     created_at: str
     featured: bool = False
+    views: int = 0
 
 
 @dataclass
@@ -1295,6 +1296,7 @@ class InMemoryStore:
             category=category,
             created_at=self._now_iso(),
             featured=False,
+            views=0,
         )
         self.training_articles[article.id] = article
         self.training_by_tenant.setdefault(tenant_id, []).append(article.id)
@@ -1344,6 +1346,17 @@ class InMemoryStore:
             raise ValueError("Article not found")
         self.training_articles.pop(article_id, None)
         self.training_by_tenant[tenant_id] = [item_id for item_id in self.training_by_tenant.get(tenant_id, []) if item_id != article_id]
+
+    def get_training_article(self, tenant_id: str, article_id: str) -> TrainingArticle:
+        article = self.training_articles.get(article_id)
+        if not article or article.tenant_id != tenant_id:
+            raise ValueError("Article not found")
+        article.views += 1
+        return article
+
+    def top_training_articles(self, tenant_id: str, limit: int = 10) -> list[TrainingArticle]:
+        items = self.list_training_articles(tenant_id=tenant_id)
+        return sorted(items, key=lambda x: x.views, reverse=True)[:limit]
 
     def analytics_export_csv(self, tenant_id: str) -> str:
         metrics = self.analytics_dashboard(tenant_id=tenant_id)

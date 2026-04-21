@@ -534,6 +534,7 @@ class TrainingArticleOut(BaseModel):
     content: str
     category: str
     featured: bool = False
+    views: int = 0
 
 
 class TrainingArticleListResponse(BaseModel):
