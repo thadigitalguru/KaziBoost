@@ -695,9 +695,12 @@ class InMemoryStore:
         )
         return campaign
 
-    def campaign_history(self, tenant_id: str) -> list[CampaignDispatch]:
+    def campaign_history(self, tenant_id: str, channel: str | None = None) -> list[CampaignDispatch]:
         ids = self.campaigns_by_tenant.get(tenant_id, [])
-        return [self.campaign_dispatches[c_id] for c_id in reversed(ids)]
+        items = [self.campaign_dispatches[c_id] for c_id in reversed(ids)]
+        if channel:
+            items = [item for item in items if item.channel == channel]
+        return items
 
     def campaign_stats(self, tenant_id: str) -> dict[str, object]:
         items = self.campaign_history(tenant_id=tenant_id)

@@ -185,7 +185,10 @@ def send_campaign(
 
 
 @router.get("/campaigns/history", response_model=CampaignHistoryResponse)
-def campaign_history(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> CampaignHistoryResponse:
+def campaign_history(
+    channel: str | None = Query(default=None),
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> CampaignHistoryResponse:
     user, _ = current
     items = [
         CampaignHistoryItem(
@@ -195,7 +198,7 @@ def campaign_history(current: tuple[User, Tenant] = Depends(get_current_user_and
             recipients=item.recipients,
             created_at=item.created_at,
         )
-        for item in store.campaign_history(tenant_id=user.tenant_id)
+        for item in store.campaign_history(tenant_id=user.tenant_id, channel=channel)
     ]
     return CampaignHistoryResponse(total=len(items), items=items)
 
