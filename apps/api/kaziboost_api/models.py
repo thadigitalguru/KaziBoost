@@ -351,6 +351,24 @@ class PaymentListResponse(BaseModel):
     items: list[PaymentOut]
 
 
+class RefundRequest(BaseModel):
+    amount: int = Field(ge=1)
+    reason: str = Field(min_length=2, max_length=120)
+
+
+class RefundOut(BaseModel):
+    refund_id: str
+    payment_id: str
+    amount: int
+    reason: str
+    status: str
+
+
+class RefundListResponse(BaseModel):
+    total: int
+    items: list[RefundOut]
+
+
 class AuditEventOut(BaseModel):
     id: str
     event_type: str

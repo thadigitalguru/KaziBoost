@@ -2,7 +2,16 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from .auth import get_current_user_and_tenant
 from .contracts import error_responses
-from .models import MpesaCallbackRequest, MpesaCallbackResponse, MpesaInitiateRequest, PaymentListResponse, PaymentOut
+from .models import (
+    MpesaCallbackRequest,
+    MpesaCallbackResponse,
+    MpesaInitiateRequest,
+    PaymentListResponse,
+    PaymentOut,
+    RefundListResponse,
+    RefundOut,
+    RefundRequest,
+)
 from .store import Tenant, User, store
 from .payments_security import verify_mpesa_callback_signature
 
@@ -118,6 +127,56 @@ def reconciliation(
     user, _tenant = current
     items = store.list_payments_by_contact(tenant_id=user.tenant_id, contact_id=contact_id)
     return PaymentListResponse(total=len(items), items=[_payment_out(item) for item in items])
+
+
+@router.post("/{payment_id}/refund", response_model=RefundOut, status_code=status.HTTP_201_CREATED)
+def create_refund(
+    payment_id: str,
+    payload: RefundRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> RefundOut:
+    user, _tenant = current
+    try:
+        refund = store.create_refund(
+            tenant_id=user.tenant_id,
+            payment_id=payment_id,
+            amount=payload.amount,
+            reason=payload.reason,
+            actor_user_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return RefundOut(
+        refund_id=refund.refund_id,
+        payment_id=refund.payment_id,
+        amount=refund.amount,
+        reason=refund.reason,
+        status=refund.status,
+    )
+
+
+@router.get("/{payment_id}/refunds", response_model=RefundListResponse)
+def list_refunds(
+    payment_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> RefundListResponse:
+    user, _tenant = current
+    try:
+        refunds = store.list_refunds(tenant_id=user.tenant_id, payment_id=payment_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    items = [
+        RefundOut(
+            refund_id=refund.refund_id,
+            payment_id=refund.payment_id,
+            amount=refund.amount,
+            reason=refund.reason,
+            status=refund.status,
+        )
+        for refund in refunds
+    ]
+    return RefundListResponse(total=len(items), items=items)
 
 
 @router.get("/{payment_id}", response_model=PaymentOut, responses=error_responses(401, 404))

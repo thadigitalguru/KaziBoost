@@ -150,6 +150,17 @@ class AuditEvent:
     created_at: str
 
 
+@dataclass
+class PaymentRefund:
+    refund_id: str
+    tenant_id: str
+    payment_id: str
+    amount: int
+    reason: str
+    status: str
+    created_at: str
+
+
 class InMemoryStore:
     ALLOWED_ROLES = {"owner", "manager", "marketer", "support", "viewer"}
 
@@ -184,6 +195,8 @@ class InMemoryStore:
         self.whatsapp_events_by_tenant: dict[str, dict[str, str]] = {}
 
         self.payments: dict[str, Payment] = {}
+        self.payment_refunds: dict[str, PaymentRefund] = {}
+        self.refunds_by_payment: dict[str, list[str]] = {}
         self.report_schedules: dict[str, list[dict[str, str]]] = {}
 
         self.audit_events: dict[str, AuditEvent] = {}
@@ -777,6 +790,47 @@ class InMemoryStore:
         if not payment or payment.tenant_id != tenant_id:
             raise ValueError("Payment not found")
         return payment
+
+    def create_refund(
+        self,
+        tenant_id: str,
+        payment_id: str,
+        amount: int,
+        reason: str,
+        actor_user_id: str | None = None,
+    ) -> PaymentRefund:
+        payment = self.get_payment(tenant_id=tenant_id, payment_id=payment_id)
+        if payment.status != "success":
+            raise ValueError("Only successful payments can be refunded")
+        if amount > payment.amount:
+            raise ValueError("Refund amount exceeds payment amount")
+
+        refund = PaymentRefund(
+            refund_id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            payment_id=payment_id,
+            amount=amount,
+            reason=reason,
+            status="refunded",
+            created_at=self._now_iso(),
+        )
+        self.payment_refunds[refund.refund_id] = refund
+        self.refunds_by_payment.setdefault(payment_id, []).append(refund.refund_id)
+        payment.status = "refunded"
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="payment.refund.created",
+            entity_type="refund",
+            entity_id=refund.refund_id,
+            actor_user_id=actor_user_id,
+            metadata={"payment_id": payment_id, "amount": str(amount)},
+        )
+        return refund
+
+    def list_refunds(self, tenant_id: str, payment_id: str) -> list[PaymentRefund]:
+        self.get_payment(tenant_id=tenant_id, payment_id=payment_id)
+        refund_ids = self.refunds_by_payment.get(payment_id, [])
+        return [self.payment_refunds[refund_id] for refund_id in refund_ids]
 
     def suggest_keywords(self, seed_query: str, location: str, language: str) -> list[dict[str, str]]:
         seed = seed_query.strip().lower()
