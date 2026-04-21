@@ -3,6 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from .auth import get_current_user_and_tenant
 from .contracts import error_responses
 from .models import (
+    ContentCalendarCreateRequest,
+    ContentCalendarItemOut,
+    ContentCalendarListResponse,
     ContentHistoryResponse,
     GenerateContentRequest,
     GenerateContentResponse,
@@ -81,3 +84,45 @@ def content_history(
     user, _tenant = current
     items = store.get_generated_content_history(tenant_id=user.tenant_id, limit=limit)
     return ContentHistoryResponse(total=len(items), items=items)
+
+
+@router.post("/calendar/items", response_model=ContentCalendarItemOut, status_code=status.HTTP_201_CREATED)
+def create_calendar_item(
+    payload: ContentCalendarCreateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> ContentCalendarItemOut:
+    user, _tenant = current
+    item = store.create_content_calendar_item(
+        tenant_id=user.tenant_id,
+        title=payload.title,
+        keyword=payload.keyword,
+        scheduled_for=payload.scheduled_for,
+        language=payload.language,
+    )
+    return ContentCalendarItemOut(
+        id=item.id,
+        title=item.title,
+        keyword=item.keyword,
+        scheduled_for=item.scheduled_for,
+        language=item.language,
+        status=item.status,
+    )
+
+
+@router.get("/calendar/items", response_model=ContentCalendarListResponse)
+def list_calendar_items(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> ContentCalendarListResponse:
+    user, _tenant = current
+    items = [
+        ContentCalendarItemOut(
+            id=item.id,
+            title=item.title,
+            keyword=item.keyword,
+            scheduled_for=item.scheduled_for,
+            language=item.language,
+            status=item.status,
+        )
+        for item in store.list_content_calendar_items(tenant_id=user.tenant_id)
+    ]
+    return ContentCalendarListResponse(total=len(items), items=items)

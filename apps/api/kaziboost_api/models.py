@@ -279,6 +279,27 @@ class ContentHistoryResponse(BaseModel):
     items: list[dict]
 
 
+class ContentCalendarCreateRequest(BaseModel):
+    title: str = Field(min_length=3, max_length=200)
+    keyword: str = Field(min_length=2, max_length=120)
+    scheduled_for: str
+    language: str = Field(default="en", min_length=2, max_length=10)
+
+
+class ContentCalendarItemOut(BaseModel):
+    id: str
+    title: str
+    keyword: str
+    scheduled_for: str
+    language: str
+    status: str
+
+
+class ContentCalendarListResponse(BaseModel):
+    total: int
+    items: list[ContentCalendarItemOut]
+
+
 class WhatsAppIncomingRequest(BaseModel):
     from_phone: str = Field(min_length=7, max_length=30)
     message_text: str = Field(min_length=1, max_length=1000)

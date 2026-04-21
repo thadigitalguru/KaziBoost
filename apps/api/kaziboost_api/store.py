@@ -194,6 +194,18 @@ class TrainingArticle:
     created_at: str
 
 
+@dataclass
+class ContentCalendarItem:
+    id: str
+    tenant_id: str
+    title: str
+    keyword: str
+    scheduled_for: str
+    language: str
+    status: str
+    created_at: str
+
+
 class InMemoryStore:
     ALLOWED_ROLES = {"owner", "manager", "marketer", "support", "viewer"}
 
@@ -222,6 +234,8 @@ class InMemoryStore:
         self.interactions_by_contact: dict[str, list[str]] = {}
 
         self.keyword_workspaces: dict[str, dict[str, list[str]]] = {}
+        self.seo_calendar: dict[str, ContentCalendarItem] = {}
+        self.seo_calendar_by_tenant: dict[str, list[str]] = {}
         self.seo_persistence = SEOPersistence(db_path=db_path)
 
         self.whatsapp_conversations: dict[str, WhatsAppConversation] = {}
@@ -1048,6 +1062,32 @@ class InMemoryStore:
 
     def get_generated_content_history(self, tenant_id: str, limit: int = 20) -> list[dict[str, object]]:
         return self.seo_persistence.list_generated_content(tenant_id=tenant_id, limit=limit)
+
+    def create_content_calendar_item(
+        self,
+        tenant_id: str,
+        title: str,
+        keyword: str,
+        scheduled_for: str,
+        language: str,
+    ) -> ContentCalendarItem:
+        item = ContentCalendarItem(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            title=title,
+            keyword=keyword,
+            scheduled_for=scheduled_for,
+            language=language,
+            status="scheduled",
+            created_at=self._now_iso(),
+        )
+        self.seo_calendar[item.id] = item
+        self.seo_calendar_by_tenant.setdefault(tenant_id, []).append(item.id)
+        return item
+
+    def list_content_calendar_items(self, tenant_id: str) -> list[ContentCalendarItem]:
+        ids = self.seo_calendar_by_tenant.get(tenant_id, [])
+        return [self.seo_calendar[item_id] for item_id in reversed(ids)]
 
     def render_metrics_prometheus(self) -> str:
         lines = [
