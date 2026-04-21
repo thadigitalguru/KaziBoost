@@ -112,6 +112,7 @@ def create_calendar_item(
 
 @router.get("/calendar/items", response_model=ContentCalendarListResponse)
 def list_calendar_items(
+    status: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> ContentCalendarListResponse:
     user, _tenant = current
@@ -124,7 +125,7 @@ def list_calendar_items(
             language=item.language,
             status=item.status,
         )
-        for item in store.list_content_calendar_items(tenant_id=user.tenant_id)
+        for item in store.list_content_calendar_items(tenant_id=user.tenant_id, status=status)
     ]
     return ContentCalendarListResponse(total=len(items), items=items)
 

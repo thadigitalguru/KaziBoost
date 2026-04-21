@@ -1144,9 +1144,12 @@ class InMemoryStore:
         self.seo_calendar_by_tenant.setdefault(tenant_id, []).append(item.id)
         return item
 
-    def list_content_calendar_items(self, tenant_id: str) -> list[ContentCalendarItem]:
+    def list_content_calendar_items(self, tenant_id: str, status: str | None = None) -> list[ContentCalendarItem]:
         ids = self.seo_calendar_by_tenant.get(tenant_id, [])
-        return [self.seo_calendar[item_id] for item_id in reversed(ids)]
+        items = [self.seo_calendar[item_id] for item_id in reversed(ids)]
+        if status:
+            items = [item for item in items if item.status == status]
+        return items
 
     def update_content_calendar_status(self, tenant_id: str, item_id: str, status: str) -> ContentCalendarItem:
         item = self.seo_calendar.get(item_id)
