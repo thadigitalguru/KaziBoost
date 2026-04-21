@@ -45,7 +45,7 @@ def test_refund_report_groups_counts_by_reason():
         json={"amount": 1000, "reason": "customer_cancelled"},
     )
 
-    report = client.get("/v1/payments/reports/refunds", headers=headers)
+    report = client.get("/v1/payments/refunds/report", headers=headers)
     assert report.status_code == 200
     assert report.json()["total_refunds"] >= 1
     assert report.json()["by_reason"]["customer_cancelled"]["count"] >= 1

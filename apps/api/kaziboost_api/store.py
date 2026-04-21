@@ -985,6 +985,15 @@ class InMemoryStore:
         refund_ids = self.refunds_by_payment.get(payment_id, [])
         return [self.payment_refunds[refund_id] for refund_id in refund_ids]
 
+    def refunds_report(self, tenant_id: str) -> dict[str, object]:
+        items = [item for item in self.payment_refunds.values() if item.tenant_id == tenant_id]
+        by_reason: dict[str, dict[str, int]] = {}
+        for item in items:
+            agg = by_reason.setdefault(item.reason, {"count": 0, "amount": 0})
+            agg["count"] += 1
+            agg["amount"] += item.amount
+        return {"total_refunds": len(items), "by_reason": by_reason}
+
     def payments_summary(self, tenant_id: str) -> dict[str, object]:
         items = [payment for payment in self.payments.values() if payment.tenant_id == tenant_id]
         totals = {"count": len(items), "amount": sum(item.amount for item in items)}

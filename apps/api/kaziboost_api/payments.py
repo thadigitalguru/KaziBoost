@@ -11,6 +11,7 @@ from .models import (
     PaymentsMonthlyReportResponse,
     PaymentsSummaryResponse,
     RefundListResponse,
+    RefundReportResponse,
     RefundOut,
     RefundRequest,
 )
@@ -195,6 +196,14 @@ def monthly_report(
 ) -> PaymentsMonthlyReportResponse:
     user, _tenant = current
     return PaymentsMonthlyReportResponse(**store.payments_monthly_report(tenant_id=user.tenant_id))
+
+
+@router.get("/refunds/report", response_model=RefundReportResponse)
+def refund_report(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> RefundReportResponse:
+    user, _tenant = current
+    return RefundReportResponse(**store.refunds_report(tenant_id=user.tenant_id))
 
 
 @router.get("/{payment_id}", response_model=PaymentOut, responses=error_responses(401, 404))

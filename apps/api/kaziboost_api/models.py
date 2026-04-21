@@ -466,6 +466,11 @@ class PaymentsMonthlyReportResponse(BaseModel):
     successful_revenue: int
 
 
+class RefundReportResponse(BaseModel):
+    total_refunds: int
+    by_reason: dict[str, dict[str, int]]
+
+
 class AuditEventOut(BaseModel):
     id: str
     event_type: str
