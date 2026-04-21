@@ -897,11 +897,18 @@ class InMemoryStore:
         )
         return reminder
 
-    def list_whatsapp_reminders(self, tenant_id: str, status: str | None = None) -> list[WhatsAppReminder]:
+    def list_whatsapp_reminders(
+        self,
+        tenant_id: str,
+        status: str | None = None,
+        thread_id: str | None = None,
+    ) -> list[WhatsAppReminder]:
         ids = self.whatsapp_reminders_by_tenant.get(tenant_id, [])
         items = [self.whatsapp_reminders[item_id] for item_id in reversed(ids)]
         if status:
             items = [item for item in items if item.status == status]
+        if thread_id:
+            items = [item for item in items if item.thread_id == thread_id]
         return items
 
     def mark_whatsapp_reminder_sent(self, tenant_id: str, reminder_id: str) -> WhatsAppReminder:

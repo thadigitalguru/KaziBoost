@@ -235,6 +235,7 @@ def schedule_reminder(
 @router.get("/reminders/history", response_model=WhatsAppReminderListResponse)
 def reminder_history(
     status: str | None = Query(default=None),
+    thread_id: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppReminderListResponse:
     user, _tenant = current
@@ -246,7 +247,7 @@ def reminder_history(
             status=item.status,
             created_at=item.created_at,
         )
-        for item in store.list_whatsapp_reminders(tenant_id=user.tenant_id, status=status)
+        for item in store.list_whatsapp_reminders(tenant_id=user.tenant_id, status=status, thread_id=thread_id)
     ]
     return WhatsAppReminderListResponse(total=len(items), items=items)
 
