@@ -914,6 +914,9 @@ class InMemoryStore:
         self.whatsapp_faq_by_tenant.setdefault(tenant_id, []).append(item)
         return item
 
+    def list_whatsapp_faq(self, tenant_id: str) -> list[dict[str, str]]:
+        return list(self.whatsapp_faq_by_tenant.get(tenant_id, []))
+
     def whatsapp_bot_reply(self, tenant_id: str, thread_id: str) -> dict[str, str]:
         conversation = self.whatsapp_conversations.get(thread_id)
         if not conversation or conversation.tenant_id != tenant_id:

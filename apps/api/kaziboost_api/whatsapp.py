@@ -110,6 +110,13 @@ def add_faq(
     return store.add_whatsapp_faq(tenant_id=user.tenant_id, question=payload.question, answer=payload.answer)
 
 
+@router.get("/faq")
+def list_faq(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
+    user, _tenant = current
+    items = store.list_whatsapp_faq(tenant_id=user.tenant_id)
+    return {"total": len(items), "items": items}
+
+
 @router.post("/conversations/{thread_id}/reply-bot", response_model=WhatsAppBotReplyResponse)
 def bot_reply(
     thread_id: str,
