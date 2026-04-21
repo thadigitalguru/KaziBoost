@@ -1233,6 +1233,17 @@ class InMemoryStore:
         items = [self.training_articles[item_id] for item_id in self.training_by_tenant.get(tenant_id, [])]
         return sorted({item.category for item in items})
 
+    def list_training_articles(self, tenant_id: str) -> list[TrainingArticle]:
+        ids = self.training_by_tenant.get(tenant_id, [])
+        return [self.training_articles[item_id] for item_id in reversed(ids) if item_id in self.training_articles]
+
+    def delete_training_article(self, tenant_id: str, article_id: str) -> None:
+        article = self.training_articles.get(article_id)
+        if not article or article.tenant_id != tenant_id:
+            raise ValueError("Article not found")
+        self.training_articles.pop(article_id, None)
+        self.training_by_tenant[tenant_id] = [item_id for item_id in self.training_by_tenant.get(tenant_id, []) if item_id != article_id]
+
     def analytics_export_csv(self, tenant_id: str) -> str:
         metrics = self.analytics_dashboard(tenant_id=tenant_id)
         output = io.StringIO()

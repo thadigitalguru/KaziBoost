@@ -29,6 +29,16 @@ def create_article(
     return TrainingArticleOut(id=article.id, title=article.title, content=article.content, category=article.category)
 
 
+@router.get("/articles", response_model=TrainingArticleListResponse)
+def list_articles(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> TrainingArticleListResponse:
+    user, _tenant = current
+    items = store.list_training_articles(tenant_id=user.tenant_id)
+    results = [TrainingArticleOut(id=item.id, title=item.title, content=item.content, category=item.category) for item in items]
+    return TrainingArticleListResponse(total=len(results), items=results)
+
+
 @router.get("/articles/search", response_model=TrainingArticleListResponse)
 def search_articles(
     q: str = Query(min_length=2),
@@ -67,3 +77,16 @@ def categories(
     user, _tenant = current
     items = store.list_training_categories(tenant_id=user.tenant_id)
     return TrainingCategoryListResponse(total=len(items), items=items)
+
+
+@router.delete("/articles/{article_id}")
+def delete_article(
+    article_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _tenant = current
+    try:
+        store.delete_training_article(tenant_id=user.tenant_id, article_id=article_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"id": article_id, "status": "deleted"}
