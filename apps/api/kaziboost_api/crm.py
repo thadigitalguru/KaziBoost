@@ -156,6 +156,12 @@ def lead_sources_summary(current: tuple[User, Tenant] = Depends(get_current_user
     return store.lead_sources_summary(tenant_id=user.tenant_id)
 
 
+@router.get("/analytics/tags")
+def tag_breakdown(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
+    user, _ = current
+    return store.contact_tags_summary(tenant_id=user.tenant_id)
+
+
 @router.post("/campaigns/send", response_model=CampaignSendResponse, status_code=status.HTTP_201_CREATED)
 def send_campaign(
     payload: CampaignSendRequest,

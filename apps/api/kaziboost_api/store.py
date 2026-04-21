@@ -719,6 +719,14 @@ class InMemoryStore:
             totals[contact.source] = totals.get(contact.source, 0) + 1
         return {"totals": totals}
 
+    def contact_tags_summary(self, tenant_id: str) -> dict[str, dict[str, int]]:
+        contacts = [self.contacts[item_id] for item_id in self.contacts_by_tenant.get(tenant_id, [])]
+        totals: dict[str, int] = {}
+        for contact in contacts:
+            for tag in contact.tags:
+                totals[tag] = totals.get(tag, 0) + 1
+        return {"totals": totals}
+
     def get_contact(self, tenant_id: str, contact_id: str) -> Contact:
         contact = self.contacts.get(contact_id)
         if not contact or contact.tenant_id != tenant_id:
