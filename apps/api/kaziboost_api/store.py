@@ -163,6 +163,12 @@ class InMemoryStore:
         self.payments: dict[str, Payment] = {}
         self.report_schedules: dict[str, list[dict[str, str]]] = {}
 
+        self.metrics: dict[str, int] = {
+            "auth_logins_total": 0,
+            "whatsapp_events_total": 0,
+            "payments_callbacks_total": 0,
+        }
+
     @staticmethod
     def _hash_password(password: str, salt: str) -> str:
         return hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
@@ -251,6 +257,7 @@ class InMemoryStore:
             return None
 
         self.login_failures.pop(normalized_email, None)
+        self.metrics["auth_logins_total"] += 1
         tenant = self.tenants[user.tenant_id]
         token = secrets.token_urlsafe(24)
         expires_at = datetime.now(tz=UTC) + timedelta(minutes=self.token_ttl_minutes)
@@ -496,6 +503,8 @@ class InMemoryStore:
         if event_id in processed:
             return self.whatsapp_conversations[processed[event_id]], True
 
+        self.metrics["whatsapp_events_total"] += 1
+
         existing_thread_id = None
         for thread_id in self.whatsapp_by_tenant.get(tenant_id, []):
             thread = self.whatsapp_conversations[thread_id]
@@ -592,6 +601,8 @@ class InMemoryStore:
         payment = self.get_payment(tenant_id=tenant_id, payment_id=payment_id)
         if payment.provider_tx_id == provider_tx_id:
             return {"payment": payment, "idempotent": True}
+
+        self.metrics["payments_callbacks_total"] += 1
 
         if payment.status in {"success", "failed"} and status != payment.status:
             raise ValueError("Invalid payment state transition")
@@ -716,6 +727,14 @@ class InMemoryStore:
 
     def get_generated_content_history(self, tenant_id: str, limit: int = 20) -> list[dict[str, object]]:
         return self.seo_persistence.list_generated_content(tenant_id=tenant_id, limit=limit)
+
+    def render_metrics_prometheus(self) -> str:
+        lines = [
+            f"kaziboost_auth_logins_total {self.metrics['auth_logins_total']}",
+            f"kaziboost_whatsapp_events_total {self.metrics['whatsapp_events_total']}",
+            f"kaziboost_payments_callbacks_total {self.metrics['payments_callbacks_total']}",
+        ]
+        return "\n".join(lines) + "\n"
 
     def analytics_dashboard(self, tenant_id: str) -> dict[str, int]:
         total_leads = len(self.contacts_by_tenant.get(tenant_id, []))

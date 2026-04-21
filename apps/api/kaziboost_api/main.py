@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 
 from .ai_seo import router as ai_seo_router
@@ -12,6 +12,7 @@ from .models import HealthResponse, ReadinessResponse
 from .payments import router as payments_router
 from .sites import router as sites_router
 from .whatsapp import router as whatsapp_router
+from .store import store
 
 app = FastAPI(title="KaziBoost API", version="0.1.0")
 app.include_router(auth_router)
@@ -50,3 +51,9 @@ def health() -> HealthResponse:
 @app.get("/ready", response_model=ReadinessResponse)
 def ready() -> ReadinessResponse:
     return ReadinessResponse(status="ready", checks={"api": "ok", "storage": "ok"})
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    payload = store.render_metrics_prometheus()
+    return Response(content=payload, media_type="text/plain")
