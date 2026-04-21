@@ -60,10 +60,11 @@ def top_articles(
 @router.get("/articles", response_model=TrainingArticleListResponse)
 def list_articles(
     featured: bool | None = Query(default=None),
+    category: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> TrainingArticleListResponse:
     user, _tenant = current
-    items = store.list_training_articles(tenant_id=user.tenant_id, featured=featured)
+    items = store.list_training_articles(tenant_id=user.tenant_id, featured=featured, category=category)
     results = [
         TrainingArticleOut(
             id=item.id,

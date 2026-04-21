@@ -1402,11 +1402,18 @@ class InMemoryStore:
         items = [self.training_articles[item_id] for item_id in self.training_by_tenant.get(tenant_id, [])]
         return sorted({item.category for item in items})
 
-    def list_training_articles(self, tenant_id: str, featured: bool | None = None) -> list[TrainingArticle]:
+    def list_training_articles(
+        self,
+        tenant_id: str,
+        featured: bool | None = None,
+        category: str | None = None,
+    ) -> list[TrainingArticle]:
         ids = self.training_by_tenant.get(tenant_id, [])
         items = [self.training_articles[item_id] for item_id in reversed(ids) if item_id in self.training_articles]
         if featured is not None:
             items = [item for item in items if item.featured == featured]
+        if category:
+            items = [item for item in items if item.category == category]
         return items
 
     def delete_training_article(self, tenant_id: str, article_id: str) -> None:
