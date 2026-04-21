@@ -482,3 +482,14 @@ class TrainingArticleOut(BaseModel):
 class TrainingArticleListResponse(BaseModel):
     total: int
     items: list[TrainingArticleOut]
+
+
+class TrainingArticleUpdateRequest(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    category: str | None = None
+
+
+class TrainingCategoryListResponse(BaseModel):
+    total: int
+    items: list[str]

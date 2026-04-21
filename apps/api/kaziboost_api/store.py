@@ -1170,6 +1170,29 @@ class InMemoryStore:
         items = [self.training_articles[item_id] for item_id in self.training_by_tenant.get(tenant_id, [])]
         return [item for item in items if q in item.title.lower() or q in item.content.lower() or q in item.category.lower()]
 
+    def update_training_article(
+        self,
+        tenant_id: str,
+        article_id: str,
+        title: str | None = None,
+        content: str | None = None,
+        category: str | None = None,
+    ) -> TrainingArticle:
+        article = self.training_articles.get(article_id)
+        if not article or article.tenant_id != tenant_id:
+            raise ValueError("Article not found")
+        if title is not None:
+            article.title = title
+        if content is not None:
+            article.content = content
+        if category is not None:
+            article.category = category
+        return article
+
+    def list_training_categories(self, tenant_id: str) -> list[str]:
+        items = [self.training_articles[item_id] for item_id in self.training_by_tenant.get(tenant_id, [])]
+        return sorted({item.category for item in items})
+
     def analytics_export_csv(self, tenant_id: str) -> str:
         metrics = self.analytics_dashboard(tenant_id=tenant_id)
         output = io.StringIO()
