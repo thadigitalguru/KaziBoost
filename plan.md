@@ -24,6 +24,7 @@
 - [x] Optimization build set (campaign analytics, WhatsApp overdue queue, monthly payments reporting, SEO calendar status lifecycle, training list/delete lifecycle)
 - [x] Execution build set (segment lifecycle mgmt, WhatsApp SLA visibility, refund reason reporting, SEO calendar filtering, featured training content)
 - [x] Next execution build set (CRM notes, WhatsApp assignment mgmt, failed-payment reason logs, SEO workspace deletion, training views/top content)
+- [x] Latest execution set (lead source analytics, reminder sent lifecycle, payments CSV export, due-content calendar view, dashboard trend snapshot)
 
 ---
 
