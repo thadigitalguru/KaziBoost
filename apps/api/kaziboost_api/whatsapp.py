@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 
 from .auth import get_current_user_and_tenant
 from .models import (
@@ -10,6 +10,7 @@ from .models import (
     WhatsAppIncomingRequest,
 )
 from .store import Tenant, User, store
+from .whatsapp_security import verify_whatsapp_signature
 
 
 router = APIRouter(prefix="/v1/whatsapp", tags=["whatsapp"])
@@ -18,21 +19,38 @@ router = APIRouter(prefix="/v1/whatsapp", tags=["whatsapp"])
 @router.post("/webhook/incoming", response_model=WhatsAppConversationOut, status_code=status.HTTP_201_CREATED)
 def incoming_webhook(
     payload: WhatsAppIncomingRequest,
+    response: Response,
+    x_event_id: str = Header(alias="x-event-id"),
+    x_webhook_signature: str = Header(alias="x-webhook-signature"),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppConversationOut:
+    if not verify_whatsapp_signature(
+        signature=x_webhook_signature,
+        event_id=x_event_id,
+        from_phone=payload.from_phone,
+        message_text=payload.message_text,
+        language=payload.language,
+    ):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature")
+
     user, _tenant = current
-    conversation = store.ingest_whatsapp_message(
+    conversation, idempotent = store.ingest_whatsapp_message(
         tenant_id=user.tenant_id,
         from_phone=payload.from_phone,
         message_text=payload.message_text,
         language=payload.language,
+        event_id=x_event_id,
     )
+    if idempotent:
+        response.status_code = status.HTTP_200_OK
+
     return WhatsAppConversationOut(
         thread_id=conversation.thread_id,
         from_phone=conversation.from_phone,
         status=conversation.status,
         last_message=conversation.last_message,
         assigned_to=conversation.assigned_to,
+        idempotent=idempotent,
     )
 
 
@@ -49,6 +67,7 @@ def list_conversations(
             status=item.status,
             last_message=item.last_message,
             assigned_to=item.assigned_to,
+            idempotent=False,
         )
         for item in conversations
     ]
@@ -88,4 +107,5 @@ def handoff(
         status=conversation.status,
         last_message=conversation.last_message,
         assigned_to=conversation.assigned_to,
+        idempotent=False,
     )

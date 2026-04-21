@@ -228,6 +228,7 @@ class WhatsAppConversationOut(BaseModel):
     status: str
     last_message: str
     assigned_to: str | None = None
+    idempotent: bool = False
 
 
 class WhatsAppConversationListResponse(BaseModel):

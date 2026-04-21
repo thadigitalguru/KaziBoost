@@ -156,6 +156,7 @@ class InMemoryStore:
         self.whatsapp_conversations: dict[str, WhatsAppConversation] = {}
         self.whatsapp_by_tenant: dict[str, list[str]] = {}
         self.whatsapp_faq_by_tenant: dict[str, list[dict[str, str]]] = {}
+        self.whatsapp_events_by_tenant: dict[str, dict[str, str]] = {}
 
         self.payments: dict[str, Payment] = {}
         self.report_schedules: dict[str, list[dict[str, str]]] = {}
@@ -465,7 +466,18 @@ class InMemoryStore:
         event_ids = self.interactions_by_contact.get(contact_id, [])
         return [self.interactions[event_id] for event_id in event_ids]
 
-    def ingest_whatsapp_message(self, tenant_id: str, from_phone: str, message_text: str, language: str) -> WhatsAppConversation:
+    def ingest_whatsapp_message(
+        self,
+        tenant_id: str,
+        from_phone: str,
+        message_text: str,
+        language: str,
+        event_id: str,
+    ) -> tuple[WhatsAppConversation, bool]:
+        processed = self.whatsapp_events_by_tenant.setdefault(tenant_id, {})
+        if event_id in processed:
+            return self.whatsapp_conversations[processed[event_id]], True
+
         existing_thread_id = None
         for thread_id in self.whatsapp_by_tenant.get(tenant_id, []):
             thread = self.whatsapp_conversations[thread_id]
@@ -478,7 +490,8 @@ class InMemoryStore:
             conversation.last_message = message_text
             conversation.updated_at = self._now_iso()
             conversation.status = "open"
-            return conversation
+            processed[event_id] = conversation.thread_id
+            return conversation, False
 
         thread_id = str(uuid.uuid4())
         conversation = WhatsAppConversation(
@@ -493,7 +506,8 @@ class InMemoryStore:
         )
         self.whatsapp_conversations[thread_id] = conversation
         self.whatsapp_by_tenant.setdefault(tenant_id, []).append(thread_id)
-        return conversation
+        processed[event_id] = thread_id
+        return conversation, False
 
     def list_whatsapp_conversations(self, tenant_id: str) -> list[WhatsAppConversation]:
         thread_ids = self.whatsapp_by_tenant.get(tenant_id, [])

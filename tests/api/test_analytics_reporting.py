@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from kaziboost_api.main import app
+from kaziboost_api.whatsapp_security import build_whatsapp_signature
 
 
 client = TestClient(app)
@@ -43,10 +44,12 @@ def test_dashboard_kpis_show_leads_conversations_and_sales():
         },
     )
 
+    webhook_payload = {"from_phone": "+254700999102", "message_text": "Need pricing", "language": "en"}
+    webhook_signature = build_whatsapp_signature(event_id="evt-analytics-1", **webhook_payload)
     client.post(
         "/v1/whatsapp/webhook/incoming",
-        headers=headers,
-        json={"from_phone": "+254700999102", "message_text": "Need pricing", "language": "en"},
+        headers={**headers, "x-event-id": "evt-analytics-1", "x-webhook-signature": webhook_signature},
+        json=webhook_payload,
     )
 
     payment = client.post(

@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from kaziboost_api.main import app
+from kaziboost_api.whatsapp_security import build_whatsapp_signature
 
 
 client = TestClient(app)
@@ -21,6 +22,16 @@ def _auth_headers(email: str, business_name: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {login['access_token']}"}
 
 
+def _webhook_headers(auth_headers: dict[str, str], event_id: str, payload: dict) -> dict[str, str]:
+    signature = build_whatsapp_signature(
+        event_id=event_id,
+        from_phone=payload["from_phone"],
+        message_text=payload["message_text"],
+        language=payload["language"],
+    )
+    return {**auth_headers, "x-event-id": event_id, "x-webhook-signature": signature}
+
+
 def test_bot_replies_from_faq_knowledge_base():
     headers = _auth_headers("wabot1@example.com", "Amina Salon")
 
@@ -30,10 +41,11 @@ def test_bot_replies_from_faq_knowledge_base():
         json={"question": "What are your opening hours?", "answer": "We are open 8am to 8pm daily."},
     )
 
+    incoming_payload = {"from_phone": "+254700666100", "message_text": "opening hours?", "language": "en"}
     incoming = client.post(
         "/v1/whatsapp/webhook/incoming",
-        headers=headers,
-        json={"from_phone": "+254700666100", "message_text": "opening hours?", "language": "en"},
+        headers=_webhook_headers(headers, "evt-bot-1", incoming_payload),
+        json=incoming_payload,
     ).json()
 
     bot = client.post(
@@ -50,10 +62,11 @@ def test_bot_replies_from_faq_knowledge_base():
 def test_unknown_question_triggers_handoff_and_assignment():
     headers = _auth_headers("wabot2@example.com", "Kamau Hardware")
 
+    incoming_payload = {"from_phone": "+254700666200", "message_text": "Can I get delivery to Rongai?", "language": "en"}
     incoming = client.post(
         "/v1/whatsapp/webhook/incoming",
-        headers=headers,
-        json={"from_phone": "+254700666200", "message_text": "Can I get delivery to Rongai?", "language": "en"},
+        headers=_webhook_headers(headers, "evt-bot-2", incoming_payload),
+        json=incoming_payload,
     ).json()
 
     bot = client.post(
