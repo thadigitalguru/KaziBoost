@@ -6,6 +6,8 @@ from .models import (
     MpesaCallbackRequest,
     MpesaCallbackResponse,
     MpesaInitiateRequest,
+    PaymentFailureItem,
+    PaymentFailureListResponse,
     PaymentListResponse,
     PaymentOut,
     PaymentsMonthlyReportResponse,
@@ -40,6 +42,7 @@ def _payment_out(payment) -> PaymentOut:
         status=payment.status,
         contact_id=payment.contact_id,
         provider_tx_id=payment.provider_tx_id,
+        reason=payment.failure_reason,
     )
 
 
@@ -108,6 +111,7 @@ def mpesa_callback(
             payment_id=payload.payment_id,
             provider_tx_id=payload.provider_tx_id,
             status=payload.status,
+            reason=payload.reason,
             actor_user_id=user.id,
         )
     except ValueError as exc:
@@ -188,6 +192,23 @@ def payments_summary(
 ) -> PaymentsSummaryResponse:
     user, _tenant = current
     return PaymentsSummaryResponse(**store.payments_summary(tenant_id=user.tenant_id))
+
+
+@router.get("/failures", response_model=PaymentFailureListResponse)
+def failures(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> PaymentFailureListResponse:
+    user, _tenant = current
+    items = [
+        PaymentFailureItem(
+            payment_id=item.payment_id,
+            provider_tx_id=item.provider_tx_id,
+            reason=item.failure_reason,
+            amount=item.amount,
+        )
+        for item in store.failed_payments(tenant_id=user.tenant_id)
+    ]
+    return PaymentFailureListResponse(total=len(items), items=items)
 
 
 @router.get("/reports/monthly", response_model=PaymentsMonthlyReportResponse)

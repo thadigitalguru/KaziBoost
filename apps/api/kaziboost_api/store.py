@@ -158,6 +158,7 @@ class Payment:
     created_at: str
     contact_id: str | None = None
     provider_tx_id: str | None = None
+    failure_reason: str | None = None
 
 
 @dataclass
@@ -943,6 +944,7 @@ class InMemoryStore:
             created_at=self._now_iso(),
             contact_id=contact_id,
             provider_tx_id=None,
+            failure_reason=None,
         )
         self.payments[payment.payment_id] = payment
         return payment
@@ -953,6 +955,7 @@ class InMemoryStore:
         payment_id: str,
         provider_tx_id: str,
         status: str,
+        reason: str | None = None,
         actor_user_id: str | None = None,
     ) -> dict[str, object]:
         payment = self.get_payment(tenant_id=tenant_id, payment_id=payment_id)
@@ -966,13 +969,14 @@ class InMemoryStore:
 
         payment.provider_tx_id = provider_tx_id
         payment.status = status
+        payment.failure_reason = reason if status == "failed" else None
         self.record_audit_event(
             tenant_id=tenant_id,
             event_type="payment.callback.applied",
             entity_type="payment",
             entity_id=payment.payment_id,
             actor_user_id=actor_user_id,
-            metadata={"status": status, "provider_tx_id": provider_tx_id},
+            metadata={"status": status, "provider_tx_id": provider_tx_id, "reason": reason or ""},
         )
         return {"payment": payment, "idempotent": False}
 
@@ -1038,6 +1042,10 @@ class InMemoryStore:
             agg["count"] += 1
             agg["amount"] += item.amount
         return {"total_refunds": len(items), "by_reason": by_reason}
+
+    def failed_payments(self, tenant_id: str) -> list[Payment]:
+        items = [item for item in self.payments.values() if item.tenant_id == tenant_id and item.status == "failed"]
+        return sorted(items, key=lambda x: x.created_at, reverse=True)
 
     def payments_summary(self, tenant_id: str) -> dict[str, object]:
         items = [payment for payment in self.payments.values() if payment.tenant_id == tenant_id]

@@ -401,12 +401,14 @@ class PaymentOut(BaseModel):
     status: str
     contact_id: str | None = None
     provider_tx_id: str | None = None
+    reason: str | None = None
 
 
 class MpesaCallbackRequest(BaseModel):
     payment_id: str
     provider_tx_id: str
     status: str
+    reason: str | None = None
 
 
 class ReportScheduleRequest(BaseModel):
@@ -485,6 +487,18 @@ class PaymentsMonthlyReportResponse(BaseModel):
 class RefundReportResponse(BaseModel):
     total_refunds: int
     by_reason: dict[str, dict[str, int]]
+
+
+class PaymentFailureItem(BaseModel):
+    payment_id: str
+    provider_tx_id: str | None = None
+    reason: str | None = None
+    amount: int
+
+
+class PaymentFailureListResponse(BaseModel):
+    total: int
+    items: list[PaymentFailureItem]
 
 
 class AuditEventOut(BaseModel):
