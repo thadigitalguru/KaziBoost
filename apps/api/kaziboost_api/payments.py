@@ -8,6 +8,7 @@ from .models import (
     MpesaInitiateRequest,
     PaymentListResponse,
     PaymentOut,
+    PaymentsMonthlyReportResponse,
     PaymentsSummaryResponse,
     RefundListResponse,
     RefundOut,
@@ -186,6 +187,14 @@ def payments_summary(
 ) -> PaymentsSummaryResponse:
     user, _tenant = current
     return PaymentsSummaryResponse(**store.payments_summary(tenant_id=user.tenant_id))
+
+
+@router.get("/reports/monthly", response_model=PaymentsMonthlyReportResponse)
+def monthly_report(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> PaymentsMonthlyReportResponse:
+    user, _tenant = current
+    return PaymentsMonthlyReportResponse(**store.payments_monthly_report(tenant_id=user.tenant_id))
 
 
 @router.get("/{payment_id}", response_model=PaymentOut, responses=error_responses(401, 404))

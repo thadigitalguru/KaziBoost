@@ -976,6 +976,20 @@ class InMemoryStore:
             agg["amount"] += payment.amount
         return {"totals": totals, "by_status": by_status}
 
+    def payments_monthly_report(self, tenant_id: str) -> dict[str, object]:
+        now_month = datetime.now(tz=UTC).strftime("%Y-%m")
+        items = [
+            payment
+            for payment in self.payments.values()
+            if payment.tenant_id == tenant_id and payment.created_at.startswith(now_month)
+        ]
+        successful = [item for item in items if item.status == "success"]
+        return {
+            "month": now_month,
+            "successful_count": len(successful),
+            "successful_revenue": sum(item.amount for item in successful),
+        }
+
     def suggest_keywords(self, seed_query: str, location: str, language: str) -> list[dict[str, str]]:
         seed = seed_query.strip().lower()
         loc = location.strip()

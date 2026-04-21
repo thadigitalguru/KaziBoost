@@ -451,6 +451,12 @@ class PaymentsSummaryResponse(BaseModel):
     by_status: dict[str, dict[str, int]]
 
 
+class PaymentsMonthlyReportResponse(BaseModel):
+    month: str
+    successful_count: int
+    successful_revenue: int
+
+
 class AuditEventOut(BaseModel):
     id: str
     event_type: str
