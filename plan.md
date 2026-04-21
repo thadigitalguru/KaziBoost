@@ -19,6 +19,7 @@
 - [x] Hardening build extension (auth no-store headers, RBAC teammate/role management, logout revocation, readiness endpoint)
 - [x] Post-hardening build set (audit events feed, report schedule lifecycle, SEO safety guardrails, hreflang map, onboarding checklist)
 - [x] Expansion build set (CRM segments, WhatsApp status transitions, refunds, analytics funnel, training knowledge base)
+- [x] Growth ops build set (CRM campaigns, WhatsApp reminders, payments summary, SEO calendar, training management)
 
 ---
 
