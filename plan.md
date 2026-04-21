@@ -20,6 +20,7 @@
 - [x] Post-hardening build set (audit events feed, report schedule lifecycle, SEO safety guardrails, hreflang map, onboarding checklist)
 - [x] Expansion build set (CRM segments, WhatsApp status transitions, refunds, analytics funnel, training knowledge base)
 - [x] Growth ops build set (CRM campaigns, WhatsApp reminders, payments summary, SEO calendar, training management)
+- [x] Scale-up build set (CRM campaigns engine, WhatsApp reminders lifecycle, payments intelligence summary, SEO calendar workflows, training lifecycle management)
 
 ---
 
