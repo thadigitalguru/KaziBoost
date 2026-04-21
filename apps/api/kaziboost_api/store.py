@@ -1325,6 +1325,16 @@ class InMemoryStore:
             },
         }
 
+    def analytics_trend_snapshot(self, tenant_id: str, days: int) -> dict[str, object]:
+        total_leads = len(self.contacts_by_tenant.get(tenant_id, []))
+        total_payments = len([p for p in self.payments.values() if p.tenant_id == tenant_id and p.status == "success"])
+        today = datetime.now(tz=UTC).date()
+        series = []
+        for i in range(days):
+            day = today - timedelta(days=(days - i - 1))
+            series.append({"date": day.isoformat(), "leads": total_leads, "payments": total_payments})
+        return {"days": days, "series": series}
+
     def create_training_article(self, tenant_id: str, title: str, content: str, category: str) -> TrainingArticle:
         article = TrainingArticle(
             id=str(uuid.uuid4()),

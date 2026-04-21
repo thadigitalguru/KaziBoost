@@ -27,6 +27,16 @@ def funnel(
     return AnalyticsFunnelResponse(**payload)
 
 
+@router.get("/dashboard/trend")
+def dashboard_trend(
+    days: int = 7,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _tenant = current
+    days = max(1, min(days, 90))
+    return store.analytics_trend_snapshot(tenant_id=user.tenant_id, days=days)
+
+
 @router.get("/reports/export.csv")
 def export_report(
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
