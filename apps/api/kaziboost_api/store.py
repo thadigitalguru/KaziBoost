@@ -850,6 +850,17 @@ class InMemoryStore:
         ]
         return "\n".join(lines) + "\n"
 
+    def onboarding_checklist(self, tenant_id: str) -> dict[str, object]:
+        items = {
+            "site_published": any(site.tenant_id == tenant_id and site.status == "published" for site in self.sites.values()),
+            "first_lead_captured": len(self.contacts_by_tenant.get(tenant_id, [])) > 0,
+            "whatsapp_connected": len(self.whatsapp_by_tenant.get(tenant_id, [])) > 0,
+            "first_payment_created": any(payment.tenant_id == tenant_id for payment in self.payments.values()),
+            "seo_content_generated": len(self.get_generated_content_history(tenant_id=tenant_id, limit=1)) > 0,
+        }
+        completed = sum(1 for value in items.values() if value)
+        return {"completed": completed, "total": len(items), "items": items}
+
     def analytics_dashboard(self, tenant_id: str) -> dict[str, int]:
         total_leads = len(self.contacts_by_tenant.get(tenant_id, []))
         open_conversations = len(

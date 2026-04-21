@@ -351,3 +351,9 @@ class AuditEventOut(BaseModel):
 class AuditEventListResponse(BaseModel):
     total: int
     items: list[AuditEventOut]
+
+
+class OnboardingChecklistResponse(BaseModel):
+    completed: int
+    total: int
+    items: dict[str, bool]

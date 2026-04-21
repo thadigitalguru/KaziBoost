@@ -10,6 +10,7 @@ from .auth import router as auth_router
 from .crm import router as crm_router
 from .errors import http_exception_handler, validation_exception_handler
 from .models import HealthResponse, ReadinessResponse
+from .onboarding import router as onboarding_router
 from .payments import router as payments_router
 from .sites import router as sites_router
 from .whatsapp import router as whatsapp_router
@@ -24,6 +25,7 @@ app.include_router(whatsapp_router)
 app.include_router(payments_router)
 app.include_router(analytics_router)
 app.include_router(audit_router)
+app.include_router(onboarding_router)
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
