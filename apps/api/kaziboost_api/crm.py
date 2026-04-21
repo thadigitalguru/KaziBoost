@@ -18,6 +18,7 @@ from .models import (
     LeadSubmissionOut,
     LeadSubmitRequest,
     SegmentCreateRequest,
+    SegmentListResponse,
     SegmentOut,
 )
 from .store import Tenant, User, store
@@ -116,6 +117,23 @@ def create_segment(
         source=payload.source,
     )
     return SegmentOut(id=segment.id, name=segment.name, tag=segment.tag, source=segment.source)
+
+
+@router.get("/segments", response_model=SegmentListResponse)
+def list_segments(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> SegmentListResponse:
+    user, _ = current
+    items = [SegmentOut(id=item.id, name=item.name, tag=item.tag, source=item.source) for item in store.list_segments(tenant_id=user.tenant_id)]
+    return SegmentListResponse(total=len(items), items=items)
+
+
+@router.delete("/segments/{segment_id}")
+def delete_segment(segment_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
+    user, _ = current
+    try:
+        store.delete_segment(tenant_id=user.tenant_id, segment_id=segment_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"id": segment_id, "status": "deleted"}
 
 
 @router.get("/segments/{segment_id}/contacts", response_model=ContactListResponse)

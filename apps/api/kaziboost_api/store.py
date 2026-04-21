@@ -638,6 +638,17 @@ class InMemoryStore:
             raise ValueError("Segment not found")
         return self.list_contacts(tenant_id=tenant_id, source=segment.source, tag=segment.tag)
 
+    def list_segments(self, tenant_id: str) -> list[CRMSegment]:
+        ids = self.crm_segments_by_tenant.get(tenant_id, [])
+        return [self.crm_segments[item_id] for item_id in ids if item_id in self.crm_segments]
+
+    def delete_segment(self, tenant_id: str, segment_id: str) -> None:
+        segment = self.crm_segments.get(segment_id)
+        if not segment or segment.tenant_id != tenant_id:
+            raise ValueError("Segment not found")
+        self.crm_segments.pop(segment_id, None)
+        self.crm_segments_by_tenant[tenant_id] = [item_id for item_id in self.crm_segments_by_tenant.get(tenant_id, []) if item_id != segment_id]
+
     def send_campaign(
         self,
         tenant_id: str,

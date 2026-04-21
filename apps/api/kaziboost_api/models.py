@@ -200,6 +200,11 @@ class SegmentOut(BaseModel):
     source: str | None = None
 
 
+class SegmentListResponse(BaseModel):
+    total: int
+    items: list[SegmentOut]
+
+
 class CampaignSendRequest(BaseModel):
     channel: str = Field(min_length=3, max_length=20)
     subject: str = Field(min_length=2, max_length=200)
