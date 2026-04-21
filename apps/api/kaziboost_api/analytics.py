@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from .auth import get_current_user_and_tenant
 from .contracts import error_responses
-from .models import AnalyticsDashboardResponse, ReportScheduleListResponse, ReportScheduleRequest, ReportScheduleResponse
+from .models import AnalyticsDashboardResponse, AnalyticsFunnelResponse, ReportScheduleListResponse, ReportScheduleRequest, ReportScheduleResponse
 from .store import Tenant, User, store
 
 
@@ -16,6 +16,15 @@ def dashboard(
     user, _tenant = current
     kpis = store.analytics_dashboard(tenant_id=user.tenant_id)
     return AnalyticsDashboardResponse(kpis=kpis)
+
+
+@router.get("/funnel", response_model=AnalyticsFunnelResponse, responses=error_responses(401))
+def funnel(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> AnalyticsFunnelResponse:
+    user, _tenant = current
+    payload = store.analytics_funnel(tenant_id=user.tenant_id)
+    return AnalyticsFunnelResponse(**payload)
 
 
 @router.get("/reports/export.csv")

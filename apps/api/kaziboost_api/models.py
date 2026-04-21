@@ -340,6 +340,11 @@ class AnalyticsDashboardResponse(BaseModel):
     kpis: AnalyticsKpis
 
 
+class AnalyticsFunnelResponse(BaseModel):
+    stages: dict[str, int]
+    conversion: dict[str, float]
+
+
 class MpesaCallbackResponse(BaseModel):
     payment_id: str
     idempotent: bool

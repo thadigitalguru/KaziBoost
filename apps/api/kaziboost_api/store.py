@@ -977,6 +977,28 @@ class InMemoryStore:
             "published_sites": published_sites,
         }
 
+    def analytics_funnel(self, tenant_id: str) -> dict[str, object]:
+        leads = len(self.contacts_by_tenant.get(tenant_id, []))
+        conversations = len(self.whatsapp_by_tenant.get(tenant_id, []))
+        successful_payments = len(
+            [payment for payment in self.payments.values() if payment.tenant_id == tenant_id and payment.status == "success"]
+        )
+
+        lead_to_conversation_rate = (conversations / leads) if leads else 0.0
+        lead_to_payment_rate = (successful_payments / leads) if leads else 0.0
+
+        return {
+            "stages": {
+                "leads": leads,
+                "conversations": conversations,
+                "successful_payments": successful_payments,
+            },
+            "conversion": {
+                "lead_to_conversation_rate": round(lead_to_conversation_rate, 4),
+                "lead_to_payment_rate": round(lead_to_payment_rate, 4),
+            },
+        }
+
     def analytics_export_csv(self, tenant_id: str) -> str:
         metrics = self.analytics_dashboard(tenant_id=tenant_id)
         output = io.StringIO()
