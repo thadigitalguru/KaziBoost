@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse
 
 from .auth import get_current_user_and_tenant
-from .models import PageCreateRequest, PageOut, PublishResponse, SEOAssetLinks, SiteCreateRequest, SiteOut
+from .models import HreflangItem, HreflangMapResponse, PageCreateRequest, PageOut, PublishResponse, SEOAssetLinks, SiteCreateRequest, SiteOut
 from .store import Tenant, User, store
 
 
@@ -112,6 +112,16 @@ def localbusiness_schema(site_id: str, current: tuple[User, Tenant] = Depends(ge
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return assets.localbusiness_schema
+
+
+@router.get("/{site_id}/seo/hreflang-map", response_model=HreflangMapResponse)
+def hreflang_map(site_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> HreflangMapResponse:
+    user, _ = current
+    try:
+        items = store.hreflang_map(tenant_id=user.tenant_id, site_id=site_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return HreflangMapResponse(total=len(items), items=[HreflangItem(**item) for item in items])
 
 
 @router.get("/{site_id}/pages/{slug}/render", response_class=HTMLResponse)

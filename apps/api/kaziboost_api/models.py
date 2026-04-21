@@ -108,6 +108,17 @@ class PublishResponse(BaseModel):
     seo_assets: SEOAssetLinks
 
 
+class HreflangItem(BaseModel):
+    language: str
+    slug: str
+    href: str
+
+
+class HreflangMapResponse(BaseModel):
+    total: int
+    items: list[HreflangItem]
+
+
 class CRMFormCreateRequest(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     kind: str = Field(min_length=2, max_length=40)

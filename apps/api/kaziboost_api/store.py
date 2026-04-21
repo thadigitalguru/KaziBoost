@@ -439,6 +439,16 @@ class InMemoryStore:
             raise ValueError("SEO assets not found")
         return assets
 
+    def hreflang_map(self, tenant_id: str, site_id: str) -> list[dict[str, str]]:
+        site = self.get_site(tenant_id, site_id)
+        if not site.published_url:
+            raise ValueError("Site is not published")
+        items: list[dict[str, str]] = []
+        for page in self._site_pages(site_id):
+            path = "/" if page.slug == "home" else f"/{page.slug}"
+            items.append({"language": page.language, "slug": page.slug, "href": f"{site.published_url}{path}"})
+        return items
+
     def create_crm_form(self, tenant_id: str, name: str, kind: str, fields: list[str]) -> CRMForm:
         form = CRMForm(id=str(uuid.uuid4()), tenant_id=tenant_id, name=name, kind=kind, fields=fields)
         self.crm_forms[form.id] = form
