@@ -206,6 +206,7 @@ def export_csv(
 
 @router.get("/failures", response_model=PaymentFailureListResponse)
 def failures(
+    reason: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> PaymentFailureListResponse:
     user, _tenant = current
@@ -216,7 +217,7 @@ def failures(
             reason=item.failure_reason,
             amount=item.amount,
         )
-        for item in store.failed_payments(tenant_id=user.tenant_id)
+        for item in store.failed_payments(tenant_id=user.tenant_id, reason=reason)
     ]
     return PaymentFailureListResponse(total=len(items), items=items)
 

@@ -1098,8 +1098,10 @@ class InMemoryStore:
             ])
         return output.getvalue()
 
-    def failed_payments(self, tenant_id: str) -> list[Payment]:
+    def failed_payments(self, tenant_id: str, reason: str | None = None) -> list[Payment]:
         items = [item for item in self.payments.values() if item.tenant_id == tenant_id and item.status == "failed"]
+        if reason:
+            items = [item for item in items if item.failure_reason == reason]
         return sorted(items, key=lambda x: x.created_at, reverse=True)
 
     def payments_summary(self, tenant_id: str) -> dict[str, object]:
