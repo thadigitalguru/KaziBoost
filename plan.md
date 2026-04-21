@@ -17,6 +17,7 @@
 - [x] Hardening pass (auth security controls, M-Pesa input validation, request-id trace header middleware)
 - [x] Hardening build extension (OpenAPI error contracts, response schemas, security headers)
 - [x] Hardening build extension (auth no-store headers, RBAC teammate/role management, logout revocation, readiness endpoint)
+- [x] Post-hardening build set (audit events feed, report schedule lifecycle, SEO safety guardrails, hreflang map, onboarding checklist)
 
 ---
 
