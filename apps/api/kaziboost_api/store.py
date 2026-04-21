@@ -1258,6 +1258,10 @@ class InMemoryStore:
         item.status = status
         return item
 
+    def due_calendar_items(self, tenant_id: str, on_or_before: str) -> list[ContentCalendarItem]:
+        items = self.list_content_calendar_items(tenant_id=tenant_id)
+        return [item for item in items if item.scheduled_for <= on_or_before and item.status == "scheduled"]
+
     def render_metrics_prometheus(self) -> str:
         lines = [
             f"kaziboost_auth_logins_total {self.metrics['auth_logins_total']}",
