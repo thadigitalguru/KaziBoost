@@ -77,6 +77,16 @@ def get_saved_keywords(
     return SaveKeywordsResponse(**store.get_saved_keywords(tenant_id=user.tenant_id, workspace=workspace))
 
 
+@router.delete("/keywords/workspaces/{workspace}")
+def delete_saved_keywords(
+    workspace: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _tenant = current
+    store.delete_saved_keywords_workspace(tenant_id=user.tenant_id, workspace=workspace)
+    return {"workspace": workspace, "status": "deleted"}
+
+
 @router.get("/content/history", response_model=ContentHistoryResponse, responses=error_responses(401))
 def content_history(
     limit: int = Query(default=20, ge=1, le=100),

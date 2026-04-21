@@ -1123,6 +1123,16 @@ class InMemoryStore:
         tenant_workspaces[workspace] = keywords
         return {"workspace": workspace, "count": len(keywords), "keywords": keywords}
 
+    def delete_saved_keywords_workspace(self, tenant_id: str, workspace: str) -> None:
+        tenant_workspaces = self.keyword_workspaces.setdefault(tenant_id, {})
+        tenant_workspaces.pop(workspace, None)
+        self.seo_persistence.save_keywords(tenant_id=tenant_id, workspace=workspace, keywords=[])
+        with self.seo_persistence._connect() as conn:  # noqa: SLF001
+            conn.execute(
+                "DELETE FROM seo_saved_keywords WHERE tenant_id = ? AND workspace = ?",
+                (tenant_id, workspace),
+            )
+
     def generate_content(
         self,
         tenant_id: str,
