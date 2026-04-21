@@ -113,6 +113,15 @@ class CampaignDispatch:
 
 
 @dataclass
+class ContactNote:
+    id: str
+    tenant_id: str
+    contact_id: str
+    text: str
+    created_at: str
+
+
+@dataclass
 class InteractionEvent:
     id: str
     tenant_id: str
@@ -231,6 +240,8 @@ class InMemoryStore:
         self.crm_segments_by_tenant: dict[str, list[str]] = {}
         self.campaign_dispatches: dict[str, CampaignDispatch] = {}
         self.campaigns_by_tenant: dict[str, list[str]] = {}
+        self.contact_notes: dict[str, ContactNote] = {}
+        self.contact_notes_by_contact: dict[str, list[str]] = {}
         self.interactions: dict[str, InteractionEvent] = {}
         self.interactions_by_contact: dict[str, list[str]] = {}
 
@@ -709,6 +720,24 @@ class InMemoryStore:
         self.get_contact(tenant_id, contact_id)
         event_ids = self.interactions_by_contact.get(contact_id, [])
         return [self.interactions[event_id] for event_id in event_ids]
+
+    def add_contact_note(self, tenant_id: str, contact_id: str, text: str) -> ContactNote:
+        self.get_contact(tenant_id, contact_id)
+        note = ContactNote(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            contact_id=contact_id,
+            text=text,
+            created_at=self._now_iso(),
+        )
+        self.contact_notes[note.id] = note
+        self.contact_notes_by_contact.setdefault(contact_id, []).append(note.id)
+        return note
+
+    def list_contact_notes(self, tenant_id: str, contact_id: str) -> list[ContactNote]:
+        self.get_contact(tenant_id, contact_id)
+        ids = self.contact_notes_by_contact.get(contact_id, [])
+        return [self.contact_notes[item_id] for item_id in reversed(ids)]
 
     def update_contact_consent(
         self,

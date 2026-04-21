@@ -12,6 +12,9 @@ from .models import (
     ContactConsentUpdateRequest,
     ContactExportResponse,
     ContactListResponse,
+    ContactNoteCreateRequest,
+    ContactNoteListResponse,
+    ContactNoteOut,
     ContactOut,
     ContactTimelineEvent,
     ContactTimelineResponse,
@@ -189,6 +192,31 @@ def campaign_history(current: tuple[User, Tenant] = Depends(get_current_user_and
 def campaign_stats(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> CampaignStatsResponse:
     user, _ = current
     return CampaignStatsResponse(**store.campaign_stats(tenant_id=user.tenant_id))
+
+
+@router.post("/contacts/{contact_id}/notes", response_model=ContactNoteOut, status_code=status.HTTP_201_CREATED)
+def add_note(
+    contact_id: str,
+    payload: ContactNoteCreateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> ContactNoteOut:
+    user, _ = current
+    try:
+        note = store.add_contact_note(tenant_id=user.tenant_id, contact_id=contact_id, text=payload.text)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return ContactNoteOut(id=note.id, contact_id=note.contact_id, text=note.text, created_at=note.created_at)
+
+
+@router.get("/contacts/{contact_id}/notes", response_model=ContactNoteListResponse)
+def list_notes(contact_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> ContactNoteListResponse:
+    user, _ = current
+    try:
+        items = store.list_contact_notes(tenant_id=user.tenant_id, contact_id=contact_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    notes = [ContactNoteOut(id=item.id, contact_id=item.contact_id, text=item.text, created_at=item.created_at) for item in items]
+    return ContactNoteListResponse(total=len(notes), items=notes)
 
 
 @router.patch("/contacts/{contact_id}/consent")

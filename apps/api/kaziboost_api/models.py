@@ -177,6 +177,22 @@ class ContactTimelineResponse(BaseModel):
     events: list[ContactTimelineEvent]
 
 
+class ContactNoteCreateRequest(BaseModel):
+    text: str = Field(min_length=2, max_length=1000)
+
+
+class ContactNoteOut(BaseModel):
+    id: str
+    contact_id: str
+    text: str
+    created_at: str
+
+
+class ContactNoteListResponse(BaseModel):
+    total: int
+    items: list[ContactNoteOut]
+
+
 class ContactConsentUpdateRequest(BaseModel):
     email_marketing: bool
     sms_marketing: bool
