@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from .auth import get_current_user_and_tenant
 from .contracts import error_responses
@@ -16,6 +16,7 @@ from .store import Tenant, User, store
 
 
 router = APIRouter(prefix="/v1/seo", tags=["seo-ai"])
+UNSAFE_KEYWORD_TERMS = {"scam", "fraud", "phishing", "steal", "counterfeit"}
 
 
 @router.post("/keywords/suggest", response_model=KeywordSuggestResponse)
@@ -48,6 +49,10 @@ def generate_content(
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> GenerateContentResponse:
     user, _tenant = current
+    lowered = payload.keyword.lower()
+    if any(term in lowered for term in UNSAFE_KEYWORD_TERMS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsafe keyword policy violation")
+
     generated = store.generate_content(
         tenant_id=user.tenant_id,
         keyword=payload.keyword,
