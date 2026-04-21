@@ -875,9 +875,19 @@ class InMemoryStore:
         )
         return reminder
 
-    def list_whatsapp_reminders(self, tenant_id: str) -> list[WhatsAppReminder]:
+    def list_whatsapp_reminders(self, tenant_id: str, status: str | None = None) -> list[WhatsAppReminder]:
         ids = self.whatsapp_reminders_by_tenant.get(tenant_id, [])
-        return [self.whatsapp_reminders[item_id] for item_id in reversed(ids)]
+        items = [self.whatsapp_reminders[item_id] for item_id in reversed(ids)]
+        if status:
+            items = [item for item in items if item.status == status]
+        return items
+
+    def mark_whatsapp_reminder_sent(self, tenant_id: str, reminder_id: str) -> WhatsAppReminder:
+        item = self.whatsapp_reminders.get(reminder_id)
+        if not item or item.tenant_id != tenant_id:
+            raise ValueError("Reminder not found")
+        item.status = "sent"
+        return item
 
     def overdue_whatsapp_queue(self, tenant_id: str) -> list[WhatsAppConversation]:
         items = self.list_whatsapp_conversations(tenant_id=tenant_id, status="open")

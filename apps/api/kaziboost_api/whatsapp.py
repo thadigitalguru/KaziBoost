@@ -221,6 +221,7 @@ def schedule_reminder(
 
 @router.get("/reminders/history", response_model=WhatsAppReminderListResponse)
 def reminder_history(
+    status: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppReminderListResponse:
     user, _tenant = current
@@ -232,9 +233,28 @@ def reminder_history(
             status=item.status,
             created_at=item.created_at,
         )
-        for item in store.list_whatsapp_reminders(tenant_id=user.tenant_id)
+        for item in store.list_whatsapp_reminders(tenant_id=user.tenant_id, status=status)
     ]
     return WhatsAppReminderListResponse(total=len(items), items=items)
+
+
+@router.patch("/reminders/{reminder_id}/sent", response_model=WhatsAppReminderOut)
+def mark_reminder_sent(
+    reminder_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> WhatsAppReminderOut:
+    user, _tenant = current
+    try:
+        item = store.mark_whatsapp_reminder_sent(tenant_id=user.tenant_id, reminder_id=reminder_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return WhatsAppReminderOut(
+        id=item.id,
+        thread_id=item.thread_id,
+        message=item.message,
+        status=item.status,
+        created_at=item.created_at,
+    )
 
 
 @router.get("/queue/overdue", response_model=WhatsAppConversationListResponse)
