@@ -6,6 +6,7 @@ from .models import (
     ContentCalendarCreateRequest,
     ContentCalendarItemOut,
     ContentCalendarListResponse,
+    ContentCalendarStatusUpdateRequest,
     ContentHistoryResponse,
     GenerateContentRequest,
     GenerateContentResponse,
@@ -126,3 +127,24 @@ def list_calendar_items(
         for item in store.list_content_calendar_items(tenant_id=user.tenant_id)
     ]
     return ContentCalendarListResponse(total=len(items), items=items)
+
+
+@router.patch("/calendar/items/{item_id}", response_model=ContentCalendarItemOut)
+def update_calendar_item(
+    item_id: str,
+    payload: ContentCalendarStatusUpdateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> ContentCalendarItemOut:
+    user, _tenant = current
+    try:
+        item = store.update_content_calendar_status(tenant_id=user.tenant_id, item_id=item_id, status=payload.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return ContentCalendarItemOut(
+        id=item.id,
+        title=item.title,
+        keyword=item.keyword,
+        scheduled_for=item.scheduled_for,
+        language=item.language,
+        status=item.status,
+    )

@@ -1120,6 +1120,15 @@ class InMemoryStore:
         ids = self.seo_calendar_by_tenant.get(tenant_id, [])
         return [self.seo_calendar[item_id] for item_id in reversed(ids)]
 
+    def update_content_calendar_status(self, tenant_id: str, item_id: str, status: str) -> ContentCalendarItem:
+        item = self.seo_calendar.get(item_id)
+        if not item or item.tenant_id != tenant_id:
+            raise ValueError("Calendar item not found")
+        if status not in {"scheduled", "published", "cancelled"}:
+            raise ValueError("Invalid calendar status")
+        item.status = status
+        return item
+
     def render_metrics_prometheus(self) -> str:
         lines = [
             f"kaziboost_auth_logins_total {self.metrics['auth_logins_total']}",

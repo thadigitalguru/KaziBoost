@@ -306,6 +306,10 @@ class ContentCalendarListResponse(BaseModel):
     items: list[ContentCalendarItemOut]
 
 
+class ContentCalendarStatusUpdateRequest(BaseModel):
+    status: str = Field(min_length=4, max_length=20)
+
+
 class WhatsAppIncomingRequest(BaseModel):
     from_phone: str = Field(min_length=7, max_length=30)
     message_text: str = Field(min_length=1, max_length=1000)
