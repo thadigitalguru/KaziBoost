@@ -134,9 +134,10 @@ class ContactOut(BaseModel):
     id: str
     name: str
     phone: str
-    email: EmailStr
+    email: str
     source: str
     tags: list[str]
+    consent: dict[str, bool] = Field(default_factory=dict)
 
 
 class LeadSubmissionOut(BaseModel):
@@ -163,6 +164,16 @@ class ContactListResponse(BaseModel):
 
 class ContactTimelineResponse(BaseModel):
     events: list[ContactTimelineEvent]
+
+
+class ContactConsentUpdateRequest(BaseModel):
+    email_marketing: bool
+    sms_marketing: bool
+
+
+class ContactExportResponse(BaseModel):
+    contact: ContactOut
+    timeline: list[ContactTimelineEvent]
 
 
 class KeywordSuggestRequest(BaseModel):

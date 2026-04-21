@@ -4,6 +4,8 @@ from .auth import get_current_user_and_tenant
 from .models import (
     CRMFormCreateRequest,
     CRMFormOut,
+    ContactConsentUpdateRequest,
+    ContactExportResponse,
     ContactListResponse,
     ContactOut,
     ContactTimelineEvent,
@@ -25,6 +27,7 @@ def _contact_out(contact) -> ContactOut:
         email=contact.email,
         source=contact.source,
         tags=contact.tags,
+        consent=contact.consent,
     )
 
 
@@ -91,6 +94,61 @@ def export_contacts_csv(
     user, _ = current
     csv_data = store.export_contacts_csv(tenant_id=user.tenant_id, source=source, tag=tag)
     return Response(content=csv_data, media_type="text/csv")
+
+
+@router.patch("/contacts/{contact_id}/consent")
+def update_consent(
+    contact_id: str,
+    payload: ContactConsentUpdateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _ = current
+    try:
+        contact = store.update_contact_consent(
+            tenant_id=user.tenant_id,
+            contact_id=contact_id,
+            email_marketing=payload.email_marketing,
+            sms_marketing=payload.sms_marketing,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return {"contact_id": contact.id, "consent": contact.consent}
+
+
+@router.get("/contacts/{contact_id}/export", response_model=ContactExportResponse)
+def export_contact(contact_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> ContactExportResponse:
+    user, _ = current
+    try:
+        contact = store.get_contact(tenant_id=user.tenant_id, contact_id=contact_id)
+        events = store.get_contact_timeline(tenant_id=user.tenant_id, contact_id=contact_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return ContactExportResponse(
+        contact=_contact_out(contact),
+        timeline=[
+            ContactTimelineEvent(
+                id=event.id,
+                type=event.type,
+                source=event.source,
+                message=event.message,
+                form_id=event.form_id,
+                created_at=event.created_at,
+            )
+            for event in events
+        ],
+    )
+
+
+@router.delete("/contacts/{contact_id}")
+def anonymize_contact(contact_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
+    user, _ = current
+    try:
+        store.anonymize_contact(tenant_id=user.tenant_id, contact_id=contact_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"contact_id": contact_id, "status": "anonymized"}
 
 
 @router.get("/contacts/{contact_id}/timeline", response_model=ContactTimelineResponse)

@@ -86,6 +86,8 @@ class Contact:
     source: str
     tags: list[str]
     created_at: str
+    consent: dict[str, bool]
+    anonymized: bool = False
 
 
 @dataclass
@@ -410,6 +412,8 @@ class InMemoryStore:
                 source=source,
                 tags=sorted(set(tags)),
                 created_at=self._now_iso(),
+                consent={"email_marketing": False, "sms_marketing": False},
+                anonymized=False,
             )
             self.contacts[contact.id] = contact
             self.contacts_by_tenant.setdefault(tenant_id, []).append(contact.id)
@@ -465,6 +469,20 @@ class InMemoryStore:
         self.get_contact(tenant_id, contact_id)
         event_ids = self.interactions_by_contact.get(contact_id, [])
         return [self.interactions[event_id] for event_id in event_ids]
+
+    def update_contact_consent(self, tenant_id: str, contact_id: str, email_marketing: bool, sms_marketing: bool) -> Contact:
+        contact = self.get_contact(tenant_id, contact_id)
+        contact.consent = {"email_marketing": email_marketing, "sms_marketing": sms_marketing}
+        return contact
+
+    def anonymize_contact(self, tenant_id: str, contact_id: str) -> Contact:
+        contact = self.get_contact(tenant_id, contact_id)
+        contact.name = "ANONYMIZED"
+        contact.phone = "REDACTED"
+        contact.email = f"{contact.id}@redacted.local"
+        contact.tags = []
+        contact.anonymized = True
+        return contact
 
     def ingest_whatsapp_message(
         self,
