@@ -187,6 +187,19 @@ class ContactExportResponse(BaseModel):
     timeline: list[ContactTimelineEvent]
 
 
+class SegmentCreateRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    tag: str | None = None
+    source: str | None = None
+
+
+class SegmentOut(BaseModel):
+    id: str
+    name: str
+    tag: str | None = None
+    source: str | None = None
+
+
 class KeywordSuggestRequest(BaseModel):
     seed_query: str = Field(min_length=2, max_length=120)
     location: str = Field(min_length=2, max_length=80)

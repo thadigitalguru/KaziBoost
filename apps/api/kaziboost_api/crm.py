@@ -12,6 +12,8 @@ from .models import (
     ContactTimelineResponse,
     LeadSubmissionOut,
     LeadSubmitRequest,
+    SegmentCreateRequest,
+    SegmentOut,
 )
 from .store import Tenant, User, store
 
@@ -94,6 +96,32 @@ def export_contacts_csv(
     user, _ = current
     csv_data = store.export_contacts_csv(tenant_id=user.tenant_id, source=source, tag=tag)
     return Response(content=csv_data, media_type="text/csv")
+
+
+@router.post("/segments", response_model=SegmentOut, status_code=status.HTTP_201_CREATED)
+def create_segment(
+    payload: SegmentCreateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> SegmentOut:
+    user, _ = current
+    segment = store.create_segment(
+        tenant_id=user.tenant_id,
+        name=payload.name,
+        tag=payload.tag,
+        source=payload.source,
+    )
+    return SegmentOut(id=segment.id, name=segment.name, tag=segment.tag, source=segment.source)
+
+
+@router.get("/segments/{segment_id}/contacts", response_model=ContactListResponse)
+def segment_contacts(segment_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> ContactListResponse:
+    user, _ = current
+    try:
+        items = store.get_segment_contacts(tenant_id=user.tenant_id, segment_id=segment_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    contacts = [_contact_out(contact) for contact in items]
+    return ContactListResponse(total=len(contacts), items=contacts)
 
 
 @router.patch("/contacts/{contact_id}/consent")

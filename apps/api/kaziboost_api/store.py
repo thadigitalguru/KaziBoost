@@ -91,6 +91,15 @@ class Contact:
 
 
 @dataclass
+class CRMSegment:
+    id: str
+    tenant_id: str
+    name: str
+    tag: str | None
+    source: str | None
+
+
+@dataclass
 class InteractionEvent:
     id: str
     tenant_id: str
@@ -161,6 +170,8 @@ class InMemoryStore:
         self.crm_forms: dict[str, CRMForm] = {}
         self.contacts: dict[str, Contact] = {}
         self.contacts_by_tenant: dict[str, list[str]] = {}
+        self.crm_segments: dict[str, CRMSegment] = {}
+        self.crm_segments_by_tenant: dict[str, list[str]] = {}
         self.interactions: dict[str, InteractionEvent] = {}
         self.interactions_by_contact: dict[str, list[str]] = {}
 
@@ -541,6 +552,24 @@ class InMemoryStore:
                 ]
             )
         return output.getvalue()
+
+    def create_segment(self, tenant_id: str, name: str, tag: str | None, source: str | None) -> CRMSegment:
+        segment = CRMSegment(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            name=name,
+            tag=tag,
+            source=source,
+        )
+        self.crm_segments[segment.id] = segment
+        self.crm_segments_by_tenant.setdefault(tenant_id, []).append(segment.id)
+        return segment
+
+    def get_segment_contacts(self, tenant_id: str, segment_id: str) -> list[Contact]:
+        segment = self.crm_segments.get(segment_id)
+        if not segment or segment.tenant_id != tenant_id:
+            raise ValueError("Segment not found")
+        return self.list_contacts(tenant_id=tenant_id, source=segment.source, tag=segment.tag)
 
     def get_contact(self, tenant_id: str, contact_id: str) -> Contact:
         contact = self.contacts.get(contact_id)
