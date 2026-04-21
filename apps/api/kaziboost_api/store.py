@@ -1276,6 +1276,13 @@ class InMemoryStore:
         items = self.list_content_calendar_items(tenant_id=tenant_id)
         return [item for item in items if item.scheduled_for <= on_or_before and item.status == "scheduled"]
 
+    def delete_content_calendar_item(self, tenant_id: str, item_id: str) -> None:
+        item = self.seo_calendar.get(item_id)
+        if not item or item.tenant_id != tenant_id:
+            raise ValueError("Calendar item not found")
+        self.seo_calendar.pop(item_id, None)
+        self.seo_calendar_by_tenant[tenant_id] = [existing_id for existing_id in self.seo_calendar_by_tenant.get(tenant_id, []) if existing_id != item_id]
+
     def render_metrics_prometheus(self) -> str:
         lines = [
             f"kaziboost_auth_logins_total {self.metrics['auth_logins_total']}",

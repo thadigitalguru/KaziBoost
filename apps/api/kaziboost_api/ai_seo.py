@@ -179,3 +179,16 @@ def due_calendar_items(
         for item in store.due_calendar_items(tenant_id=user.tenant_id, on_or_before=on_or_before)
     ]
     return ContentCalendarListResponse(total=len(items), items=items)
+
+
+@router.delete("/calendar/items/{item_id}")
+def delete_calendar_item(
+    item_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _tenant = current
+    try:
+        store.delete_content_calendar_item(tenant_id=user.tenant_id, item_id=item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"id": item_id, "status": "deleted"}
