@@ -16,7 +16,29 @@ from .whatsapp_security import verify_whatsapp_signature
 router = APIRouter(prefix="/v1/whatsapp", tags=["whatsapp"])
 
 
-@router.post("/webhook/incoming", response_model=WhatsAppConversationOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/webhook/incoming",
+    response_model=WhatsAppConversationOut,
+    status_code=status.HTTP_201_CREATED,
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "booking_query": {
+                            "summary": "Customer booking inquiry",
+                            "value": {
+                                "from_phone": "+254700333111",
+                                "message_text": "Hi, I want to book a salon slot",
+                                "language": "en",
+                            },
+                        }
+                    }
+                }
+            }
+        }
+    },
+)
 def incoming_webhook(
     payload: WhatsAppIncomingRequest,
     response: Response,

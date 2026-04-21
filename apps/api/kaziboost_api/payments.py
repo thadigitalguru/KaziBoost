@@ -36,6 +36,25 @@ def _payment_out(payment) -> PaymentOut:
     response_model=PaymentOut,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(400, 401, 429),
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "basic": {
+                            "summary": "Basic M-Pesa checkout",
+                            "value": {
+                                "phone": "+254700123456",
+                                "amount": 1500,
+                                "currency": "KES",
+                                "reference": "BOOKING-001",
+                            },
+                        }
+                    }
+                }
+            }
+        }
+    },
 )
 def initiate_mpesa(
     payload: MpesaInitiateRequest,
