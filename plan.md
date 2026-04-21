@@ -23,6 +23,7 @@
 - [x] Scale-up build set (CRM campaigns engine, WhatsApp reminders lifecycle, payments intelligence summary, SEO calendar workflows, training lifecycle management)
 - [x] Optimization build set (campaign analytics, WhatsApp overdue queue, monthly payments reporting, SEO calendar status lifecycle, training list/delete lifecycle)
 - [x] Execution build set (segment lifecycle mgmt, WhatsApp SLA visibility, refund reason reporting, SEO calendar filtering, featured training content)
+- [x] Next execution build set (CRM notes, WhatsApp assignment mgmt, failed-payment reason logs, SEO workspace deletion, training views/top content)
 
 ---
 
