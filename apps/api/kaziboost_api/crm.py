@@ -109,6 +109,7 @@ def update_consent(
             contact_id=contact_id,
             email_marketing=payload.email_marketing,
             sms_marketing=payload.sms_marketing,
+            actor_user_id=user.id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -145,7 +146,7 @@ def export_contact(contact_id: str, current: tuple[User, Tenant] = Depends(get_c
 def anonymize_contact(contact_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
     user, _ = current
     try:
-        store.anonymize_contact(tenant_id=user.tenant_id, contact_id=contact_id)
+        store.anonymize_contact(tenant_id=user.tenant_id, contact_id=contact_id, actor_user_id=user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return {"contact_id": contact_id, "status": "anonymized"}

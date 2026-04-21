@@ -129,6 +129,18 @@ class Payment:
     provider_tx_id: str | None = None
 
 
+@dataclass
+class AuditEvent:
+    id: str
+    tenant_id: str
+    event_type: str
+    actor_user_id: str | None
+    entity_type: str
+    entity_id: str
+    metadata: dict[str, str]
+    created_at: str
+
+
 class InMemoryStore:
     ALLOWED_ROLES = {"owner", "manager", "marketer", "support", "viewer"}
 
@@ -163,6 +175,9 @@ class InMemoryStore:
         self.payments: dict[str, Payment] = {}
         self.report_schedules: dict[str, list[dict[str, str]]] = {}
 
+        self.audit_events: dict[str, AuditEvent] = {}
+        self.audit_by_tenant: dict[str, list[str]] = {}
+
         self.metrics: dict[str, int] = {
             "auth_logins_total": 0,
             "whatsapp_events_total": 0,
@@ -187,6 +202,33 @@ class InMemoryStore:
     def _now_iso() -> str:
         return datetime.now(tz=UTC).isoformat()
 
+    def record_audit_event(
+        self,
+        tenant_id: str,
+        event_type: str,
+        entity_type: str,
+        entity_id: str,
+        actor_user_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> AuditEvent:
+        event = AuditEvent(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            event_type=event_type,
+            actor_user_id=actor_user_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            metadata=metadata or {},
+            created_at=self._now_iso(),
+        )
+        self.audit_events[event.id] = event
+        self.audit_by_tenant.setdefault(tenant_id, []).append(event.id)
+        return event
+
+    def list_audit_events(self, tenant_id: str, limit: int = 100) -> list[AuditEvent]:
+        event_ids = self.audit_by_tenant.get(tenant_id, [])[-limit:]
+        return [self.audit_events[event_id] for event_id in reversed(event_ids)]
+
     def create_tenant_and_owner(self, business_name: str, owner_name: str, email: str, password: str) -> tuple[Tenant, User]:
         normalized_email = email.strip().lower()
         if normalized_email in self.users_by_email:
@@ -210,7 +252,15 @@ class InMemoryStore:
         self.users_by_email[user.email] = user
         return tenant, user
 
-    def create_teammate(self, tenant_id: str, owner_name: str, email: str, password: str, role: str) -> User:
+    def create_teammate(
+        self,
+        tenant_id: str,
+        owner_name: str,
+        email: str,
+        password: str,
+        role: str,
+        actor_user_id: str | None = None,
+    ) -> User:
         normalized_email = email.strip().lower()
         if normalized_email in self.users_by_email:
             raise ValueError("Email already exists")
@@ -231,15 +281,31 @@ class InMemoryStore:
         )
         self.users_by_id[user.id] = user
         self.users_by_email[user.email] = user
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="teammate.created",
+            entity_type="user",
+            entity_id=user.id,
+            actor_user_id=actor_user_id,
+            metadata={"role": role},
+        )
         return user
 
-    def update_user_role(self, tenant_id: str, user_id: str, role: str) -> User:
+    def update_user_role(self, tenant_id: str, user_id: str, role: str, actor_user_id: str | None = None) -> User:
         if role not in self.ALLOWED_ROLES:
             raise ValueError("Invalid role")
         user = self.users_by_id.get(user_id)
         if not user or user.tenant_id != tenant_id:
             raise ValueError("User not found")
         user.role = role
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="user.role.updated",
+            entity_type="user",
+            entity_id=user.id,
+            actor_user_id=actor_user_id,
+            metadata={"role": role},
+        )
         return user
 
     def authenticate(self, email: str, password: str) -> tuple[str, User, Tenant] | None:
@@ -477,18 +543,41 @@ class InMemoryStore:
         event_ids = self.interactions_by_contact.get(contact_id, [])
         return [self.interactions[event_id] for event_id in event_ids]
 
-    def update_contact_consent(self, tenant_id: str, contact_id: str, email_marketing: bool, sms_marketing: bool) -> Contact:
+    def update_contact_consent(
+        self,
+        tenant_id: str,
+        contact_id: str,
+        email_marketing: bool,
+        sms_marketing: bool,
+        actor_user_id: str | None = None,
+    ) -> Contact:
         contact = self.get_contact(tenant_id, contact_id)
         contact.consent = {"email_marketing": email_marketing, "sms_marketing": sms_marketing}
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="contact.consent.updated",
+            entity_type="contact",
+            entity_id=contact_id,
+            actor_user_id=actor_user_id,
+            metadata={"email_marketing": str(email_marketing), "sms_marketing": str(sms_marketing)},
+        )
         return contact
 
-    def anonymize_contact(self, tenant_id: str, contact_id: str) -> Contact:
+    def anonymize_contact(self, tenant_id: str, contact_id: str, actor_user_id: str | None = None) -> Contact:
         contact = self.get_contact(tenant_id, contact_id)
         contact.name = "ANONYMIZED"
         contact.phone = "REDACTED"
         contact.email = f"{contact.id}@redacted.local"
         contact.tags = []
         contact.anonymized = True
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="contact.anonymized",
+            entity_type="contact",
+            entity_id=contact_id,
+            actor_user_id=actor_user_id,
+            metadata={},
+        )
         return contact
 
     def ingest_whatsapp_message(
@@ -597,7 +686,14 @@ class InMemoryStore:
         self.payments[payment.payment_id] = payment
         return payment
 
-    def apply_mpesa_callback(self, tenant_id: str, payment_id: str, provider_tx_id: str, status: str) -> dict[str, object]:
+    def apply_mpesa_callback(
+        self,
+        tenant_id: str,
+        payment_id: str,
+        provider_tx_id: str,
+        status: str,
+        actor_user_id: str | None = None,
+    ) -> dict[str, object]:
         payment = self.get_payment(tenant_id=tenant_id, payment_id=payment_id)
         if payment.provider_tx_id == provider_tx_id:
             return {"payment": payment, "idempotent": True}
@@ -609,6 +705,14 @@ class InMemoryStore:
 
         payment.provider_tx_id = provider_tx_id
         payment.status = status
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="payment.callback.applied",
+            entity_type="payment",
+            entity_id=payment.payment_id,
+            actor_user_id=actor_user_id,
+            metadata={"status": status, "provider_tx_id": provider_tx_id},
+        )
         return {"payment": payment, "idempotent": False}
 
     def list_payments_by_contact(self, tenant_id: str, contact_id: str) -> list[Payment]:

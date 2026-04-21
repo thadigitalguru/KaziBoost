@@ -320,3 +320,18 @@ class MpesaCallbackResponse(BaseModel):
 class PaymentListResponse(BaseModel):
     total: int
     items: list[PaymentOut]
+
+
+class AuditEventOut(BaseModel):
+    id: str
+    event_type: str
+    actor_user_id: str | None = None
+    entity_type: str
+    entity_id: str
+    metadata: dict[str, str]
+    created_at: str
+
+
+class AuditEventListResponse(BaseModel):
+    total: int
+    items: list[AuditEventOut]

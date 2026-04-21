@@ -5,6 +5,7 @@ from fastapi.exceptions import RequestValidationError
 
 from .ai_seo import router as ai_seo_router
 from .analytics import router as analytics_router
+from .audit import router as audit_router
 from .auth import router as auth_router
 from .crm import router as crm_router
 from .errors import http_exception_handler, validation_exception_handler
@@ -22,6 +23,7 @@ app.include_router(ai_seo_router)
 app.include_router(whatsapp_router)
 app.include_router(payments_router)
 app.include_router(analytics_router)
+app.include_router(audit_router)
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)

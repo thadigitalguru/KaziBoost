@@ -96,6 +96,7 @@ def mpesa_callback(
             payment_id=payload.payment_id,
             provider_tx_id=payload.provider_tx_id,
             status=payload.status,
+            actor_user_id=user.id,
         )
     except ValueError as exc:
         if "state transition" in str(exc).lower():

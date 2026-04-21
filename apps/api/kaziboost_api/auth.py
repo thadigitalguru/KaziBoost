@@ -100,6 +100,7 @@ def create_teammate(
             email=payload.email,
             password=payload.password,
             role=payload.role,
+            actor_user_id=requester.id,
         )
     except ValueError as exc:
         message = str(exc)
@@ -119,7 +120,12 @@ def update_role(
     if requester.role != "owner":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can update roles")
     try:
-        user = store.update_user_role(tenant_id=tenant.id, user_id=user_id, role=payload.role)
+        user = store.update_user_role(
+            tenant_id=tenant.id,
+            user_id=user_id,
+            role=payload.role,
+            actor_user_id=requester.id,
+        )
     except ValueError as exc:
         message = str(exc)
         status_code = status.HTTP_404_NOT_FOUND if "not found" in message.lower() else status.HTTP_400_BAD_REQUEST
