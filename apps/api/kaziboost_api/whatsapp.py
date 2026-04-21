@@ -83,10 +83,16 @@ def incoming_webhook(
 def list_conversations(
     status: str | None = Query(default=None),
     assigned_to: str | None = Query(default=None),
+    from_phone: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppConversationListResponse:
     user, _tenant = current
-    conversations = store.list_whatsapp_conversations(tenant_id=user.tenant_id, status=status, assigned_to=assigned_to)
+    conversations = store.list_whatsapp_conversations(
+        tenant_id=user.tenant_id,
+        status=status,
+        assigned_to=assigned_to,
+        from_phone=from_phone,
+    )
     items = [
         WhatsAppConversationOut(
             thread_id=item.thread_id,

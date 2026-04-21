@@ -846,6 +846,7 @@ class InMemoryStore:
         tenant_id: str,
         status: str | None = None,
         assigned_to: str | None = None,
+        from_phone: str | None = None,
     ) -> list[WhatsAppConversation]:
         thread_ids = self.whatsapp_by_tenant.get(tenant_id, [])
         items = [self.whatsapp_conversations[thread_id] for thread_id in thread_ids]
@@ -853,6 +854,8 @@ class InMemoryStore:
             items = [item for item in items if item.status == status]
         if assigned_to:
             items = [item for item in items if item.assigned_to == assigned_to]
+        if from_phone:
+            items = [item for item in items if item.from_phone == from_phone]
         return items
 
     def set_whatsapp_status(self, tenant_id: str, thread_id: str, status: str) -> WhatsAppConversation:
