@@ -130,10 +130,16 @@ def mpesa_callback(
 def reconciliation(
     contact_id: str,
     status: str | None = Query(default=None),
+    provider_tx_id: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> PaymentListResponse:
     user, _tenant = current
-    items = store.list_payments_by_contact(tenant_id=user.tenant_id, contact_id=contact_id, status=status)
+    items = store.list_payments_by_contact(
+        tenant_id=user.tenant_id,
+        contact_id=contact_id,
+        status=status,
+        provider_tx_id=provider_tx_id,
+    )
     return PaymentListResponse(total=len(items), items=[_payment_out(item) for item in items])
 
 

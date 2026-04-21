@@ -1030,7 +1030,13 @@ class InMemoryStore:
         )
         return {"payment": payment, "idempotent": False}
 
-    def list_payments_by_contact(self, tenant_id: str, contact_id: str, status: str | None = None) -> list[Payment]:
+    def list_payments_by_contact(
+        self,
+        tenant_id: str,
+        contact_id: str,
+        status: str | None = None,
+        provider_tx_id: str | None = None,
+    ) -> list[Payment]:
         items = [
             payment
             for payment in self.payments.values()
@@ -1038,6 +1044,8 @@ class InMemoryStore:
         ]
         if status:
             items = [payment for payment in items if payment.status == status]
+        if provider_tx_id:
+            items = [payment for payment in items if payment.provider_tx_id == provider_tx_id]
         return items
 
     def get_payment(self, tenant_id: str, payment_id: str) -> Payment:
