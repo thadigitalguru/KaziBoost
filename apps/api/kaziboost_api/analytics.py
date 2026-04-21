@@ -33,7 +33,9 @@ def dashboard_trend(
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> dict:
     user, _tenant = current
-    days = max(1, min(days, 90))
+    if days < 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="days must be at least 1")
+    days = min(days, 90)
     return store.analytics_trend_snapshot(tenant_id=user.tenant_id, days=days)
 
 
