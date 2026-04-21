@@ -4,6 +4,10 @@ from .auth import get_current_user_and_tenant
 from .models import (
     CRMFormCreateRequest,
     CRMFormOut,
+    CampaignHistoryItem,
+    CampaignHistoryResponse,
+    CampaignSendRequest,
+    CampaignSendResponse,
     ContactConsentUpdateRequest,
     ContactExportResponse,
     ContactListResponse,
@@ -122,6 +126,44 @@ def segment_contacts(segment_id: str, current: tuple[User, Tenant] = Depends(get
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     contacts = [_contact_out(contact) for contact in items]
     return ContactListResponse(total=len(contacts), items=contacts)
+
+
+@router.post("/campaigns/send", response_model=CampaignSendResponse, status_code=status.HTTP_201_CREATED)
+def send_campaign(
+    payload: CampaignSendRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> CampaignSendResponse:
+    user, _ = current
+    campaign = store.send_campaign(
+        tenant_id=user.tenant_id,
+        channel=payload.channel,
+        subject=payload.subject,
+        message=payload.message,
+        tag=payload.tag,
+        source=payload.source,
+    )
+    return CampaignSendResponse(
+        id=campaign.id,
+        channel=campaign.channel,
+        subject=campaign.subject,
+        recipients=campaign.recipients,
+    )
+
+
+@router.get("/campaigns/history", response_model=CampaignHistoryResponse)
+def campaign_history(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> CampaignHistoryResponse:
+    user, _ = current
+    items = [
+        CampaignHistoryItem(
+            id=item.id,
+            channel=item.channel,
+            subject=item.subject,
+            recipients=item.recipients,
+            created_at=item.created_at,
+        )
+        for item in store.campaign_history(tenant_id=user.tenant_id)
+    ]
+    return CampaignHistoryResponse(total=len(items), items=items)
 
 
 @router.patch("/contacts/{contact_id}/consent")

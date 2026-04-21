@@ -100,6 +100,19 @@ class CRMSegment:
 
 
 @dataclass
+class CampaignDispatch:
+    id: str
+    tenant_id: str
+    channel: str
+    subject: str
+    message: str
+    tag: str | None
+    source: str | None
+    recipients: int
+    created_at: str
+
+
+@dataclass
 class InteractionEvent:
     id: str
     tenant_id: str
@@ -193,6 +206,8 @@ class InMemoryStore:
         self.contacts_by_tenant: dict[str, list[str]] = {}
         self.crm_segments: dict[str, CRMSegment] = {}
         self.crm_segments_by_tenant: dict[str, list[str]] = {}
+        self.campaign_dispatches: dict[str, CampaignDispatch] = {}
+        self.campaigns_by_tenant: dict[str, list[str]] = {}
         self.interactions: dict[str, InteractionEvent] = {}
         self.interactions_by_contact: dict[str, list[str]] = {}
 
@@ -596,6 +611,42 @@ class InMemoryStore:
         if not segment or segment.tenant_id != tenant_id:
             raise ValueError("Segment not found")
         return self.list_contacts(tenant_id=tenant_id, source=segment.source, tag=segment.tag)
+
+    def send_campaign(
+        self,
+        tenant_id: str,
+        channel: str,
+        subject: str,
+        message: str,
+        tag: str | None,
+        source: str | None,
+    ) -> CampaignDispatch:
+        recipients = self.list_contacts(tenant_id=tenant_id, source=source, tag=tag)
+        campaign = CampaignDispatch(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            channel=channel,
+            subject=subject,
+            message=message,
+            tag=tag,
+            source=source,
+            recipients=len(recipients),
+            created_at=self._now_iso(),
+        )
+        self.campaign_dispatches[campaign.id] = campaign
+        self.campaigns_by_tenant.setdefault(tenant_id, []).append(campaign.id)
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="campaign.sent",
+            entity_type="campaign",
+            entity_id=campaign.id,
+            metadata={"channel": channel, "recipients": str(campaign.recipients)},
+        )
+        return campaign
+
+    def campaign_history(self, tenant_id: str) -> list[CampaignDispatch]:
+        ids = self.campaigns_by_tenant.get(tenant_id, [])
+        return [self.campaign_dispatches[c_id] for c_id in reversed(ids)]
 
     def get_contact(self, tenant_id: str, contact_id: str) -> Contact:
         contact = self.contacts.get(contact_id)

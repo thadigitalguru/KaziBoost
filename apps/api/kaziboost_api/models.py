@@ -200,6 +200,34 @@ class SegmentOut(BaseModel):
     source: str | None = None
 
 
+class CampaignSendRequest(BaseModel):
+    channel: str = Field(min_length=3, max_length=20)
+    subject: str = Field(min_length=2, max_length=200)
+    message: str = Field(min_length=2, max_length=2000)
+    tag: str | None = None
+    source: str | None = None
+
+
+class CampaignSendResponse(BaseModel):
+    id: str
+    channel: str
+    subject: str
+    recipients: int
+
+
+class CampaignHistoryItem(BaseModel):
+    id: str
+    channel: str
+    subject: str
+    recipients: int
+    created_at: str
+
+
+class CampaignHistoryResponse(BaseModel):
+    total: int
+    items: list[CampaignHistoryItem]
+
+
 class KeywordSuggestRequest(BaseModel):
     seed_query: str = Field(min_length=2, max_length=120)
     location: str = Field(min_length=2, max_length=80)
