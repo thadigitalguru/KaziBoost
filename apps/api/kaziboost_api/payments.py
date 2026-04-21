@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
 from .auth import get_current_user_and_tenant
 from .contracts import error_responses
@@ -129,10 +129,11 @@ def mpesa_callback(
 @router.get("/reconciliation", response_model=PaymentListResponse, responses=error_responses(401))
 def reconciliation(
     contact_id: str,
+    status: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> PaymentListResponse:
     user, _tenant = current
-    items = store.list_payments_by_contact(tenant_id=user.tenant_id, contact_id=contact_id)
+    items = store.list_payments_by_contact(tenant_id=user.tenant_id, contact_id=contact_id, status=status)
     return PaymentListResponse(total=len(items), items=[_payment_out(item) for item in items])
 
 
