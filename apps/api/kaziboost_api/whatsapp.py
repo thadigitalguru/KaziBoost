@@ -8,6 +8,9 @@ from .models import (
     WhatsAppFAQCreateRequest,
     WhatsAppHandoffRequest,
     WhatsAppIncomingRequest,
+    WhatsAppReminderListResponse,
+    WhatsAppReminderOut,
+    WhatsAppReminderRequest,
 )
 from .store import Tenant, User, store
 from .whatsapp_security import verify_whatsapp_signature
@@ -172,3 +175,41 @@ def reopen_conversation(
         assigned_to=conversation.assigned_to,
         idempotent=False,
     )
+
+
+@router.post("/conversations/{thread_id}/remind", response_model=WhatsAppReminderOut, status_code=status.HTTP_201_CREATED)
+def schedule_reminder(
+    thread_id: str,
+    payload: WhatsAppReminderRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> WhatsAppReminderOut:
+    user, _tenant = current
+    try:
+        reminder = store.schedule_whatsapp_reminder(tenant_id=user.tenant_id, thread_id=thread_id, message=payload.message)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return WhatsAppReminderOut(
+        id=reminder.id,
+        thread_id=reminder.thread_id,
+        message=reminder.message,
+        status=reminder.status,
+        created_at=reminder.created_at,
+    )
+
+
+@router.get("/reminders/history", response_model=WhatsAppReminderListResponse)
+def reminder_history(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> WhatsAppReminderListResponse:
+    user, _tenant = current
+    items = [
+        WhatsAppReminderOut(
+            id=item.id,
+            thread_id=item.thread_id,
+            message=item.message,
+            status=item.status,
+            created_at=item.created_at,
+        )
+        for item in store.list_whatsapp_reminders(tenant_id=user.tenant_id)
+    ]
+    return WhatsAppReminderListResponse(total=len(items), items=items)

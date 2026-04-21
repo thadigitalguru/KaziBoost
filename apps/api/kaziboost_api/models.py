@@ -299,6 +299,23 @@ class WhatsAppConversationListResponse(BaseModel):
     items: list[WhatsAppConversationOut]
 
 
+class WhatsAppReminderRequest(BaseModel):
+    message: str = Field(min_length=3, max_length=500)
+
+
+class WhatsAppReminderOut(BaseModel):
+    id: str
+    thread_id: str
+    message: str
+    status: str
+    created_at: str
+
+
+class WhatsAppReminderListResponse(BaseModel):
+    total: int
+    items: list[WhatsAppReminderOut]
+
+
 class WhatsAppFAQCreateRequest(BaseModel):
     question: str = Field(min_length=2, max_length=300)
     answer: str = Field(min_length=2, max_length=500)

@@ -152,6 +152,16 @@ class Payment:
 
 
 @dataclass
+class WhatsAppReminder:
+    id: str
+    tenant_id: str
+    thread_id: str
+    message: str
+    status: str
+    created_at: str
+
+
+@dataclass
 class AuditEvent:
     id: str
     tenant_id: str
@@ -218,6 +228,8 @@ class InMemoryStore:
         self.whatsapp_by_tenant: dict[str, list[str]] = {}
         self.whatsapp_faq_by_tenant: dict[str, list[dict[str, str]]] = {}
         self.whatsapp_events_by_tenant: dict[str, dict[str, str]] = {}
+        self.whatsapp_reminders: dict[str, WhatsAppReminder] = {}
+        self.whatsapp_reminders_by_tenant: dict[str, list[str]] = {}
 
         self.payments: dict[str, Payment] = {}
         self.payment_refunds: dict[str, PaymentRefund] = {}
@@ -755,6 +767,33 @@ class InMemoryStore:
         conversation.status = status
         conversation.updated_at = self._now_iso()
         return conversation
+
+    def schedule_whatsapp_reminder(self, tenant_id: str, thread_id: str, message: str) -> WhatsAppReminder:
+        conversation = self.whatsapp_conversations.get(thread_id)
+        if not conversation or conversation.tenant_id != tenant_id:
+            raise ValueError("Conversation not found")
+        reminder = WhatsAppReminder(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            thread_id=thread_id,
+            message=message,
+            status="scheduled",
+            created_at=self._now_iso(),
+        )
+        self.whatsapp_reminders[reminder.id] = reminder
+        self.whatsapp_reminders_by_tenant.setdefault(tenant_id, []).append(reminder.id)
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="whatsapp.reminder.scheduled",
+            entity_type="whatsapp_reminder",
+            entity_id=reminder.id,
+            metadata={"thread_id": thread_id},
+        )
+        return reminder
+
+    def list_whatsapp_reminders(self, tenant_id: str) -> list[WhatsAppReminder]:
+        ids = self.whatsapp_reminders_by_tenant.get(tenant_id, [])
+        return [self.whatsapp_reminders[item_id] for item_id in reversed(ids)]
 
     def add_whatsapp_faq(self, tenant_id: str, question: str, answer: str) -> dict[str, str]:
         item = {"question": question, "answer": answer}
