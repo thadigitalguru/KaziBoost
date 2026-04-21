@@ -192,6 +192,7 @@ class TrainingArticle:
     content: str
     category: str
     created_at: str
+    featured: bool = False
 
 
 @dataclass
@@ -1231,6 +1232,7 @@ class InMemoryStore:
             content=content,
             category=category,
             created_at=self._now_iso(),
+            featured=False,
         )
         self.training_articles[article.id] = article
         self.training_by_tenant.setdefault(tenant_id, []).append(article.id)
@@ -1248,6 +1250,7 @@ class InMemoryStore:
         title: str | None = None,
         content: str | None = None,
         category: str | None = None,
+        featured: bool | None = None,
     ) -> TrainingArticle:
         article = self.training_articles.get(article_id)
         if not article or article.tenant_id != tenant_id:
@@ -1258,15 +1261,20 @@ class InMemoryStore:
             article.content = content
         if category is not None:
             article.category = category
+        if featured is not None:
+            article.featured = featured
         return article
 
     def list_training_categories(self, tenant_id: str) -> list[str]:
         items = [self.training_articles[item_id] for item_id in self.training_by_tenant.get(tenant_id, [])]
         return sorted({item.category for item in items})
 
-    def list_training_articles(self, tenant_id: str) -> list[TrainingArticle]:
+    def list_training_articles(self, tenant_id: str, featured: bool | None = None) -> list[TrainingArticle]:
         ids = self.training_by_tenant.get(tenant_id, [])
-        return [self.training_articles[item_id] for item_id in reversed(ids) if item_id in self.training_articles]
+        items = [self.training_articles[item_id] for item_id in reversed(ids) if item_id in self.training_articles]
+        if featured is not None:
+            items = [item for item in items if item.featured == featured]
+        return items
 
     def delete_training_article(self, tenant_id: str, article_id: str) -> None:
         article = self.training_articles.get(article_id)

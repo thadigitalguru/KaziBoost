@@ -503,6 +503,7 @@ class TrainingArticleOut(BaseModel):
     title: str
     content: str
     category: str
+    featured: bool = False
 
 
 class TrainingArticleListResponse(BaseModel):
@@ -514,6 +515,7 @@ class TrainingArticleUpdateRequest(BaseModel):
     title: str | None = None
     content: str | None = None
     category: str | None = None
+    featured: bool | None = None
 
 
 class TrainingCategoryListResponse(BaseModel):

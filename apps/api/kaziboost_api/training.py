@@ -26,16 +26,32 @@ def create_article(
         content=payload.content,
         category=payload.category,
     )
-    return TrainingArticleOut(id=article.id, title=article.title, content=article.content, category=article.category)
+    return TrainingArticleOut(
+        id=article.id,
+        title=article.title,
+        content=article.content,
+        category=article.category,
+        featured=article.featured,
+    )
 
 
 @router.get("/articles", response_model=TrainingArticleListResponse)
 def list_articles(
+    featured: bool | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> TrainingArticleListResponse:
     user, _tenant = current
-    items = store.list_training_articles(tenant_id=user.tenant_id)
-    results = [TrainingArticleOut(id=item.id, title=item.title, content=item.content, category=item.category) for item in items]
+    items = store.list_training_articles(tenant_id=user.tenant_id, featured=featured)
+    results = [
+        TrainingArticleOut(
+            id=item.id,
+            title=item.title,
+            content=item.content,
+            category=item.category,
+            featured=item.featured,
+        )
+        for item in items
+    ]
     return TrainingArticleListResponse(total=len(results), items=results)
 
 
@@ -46,7 +62,16 @@ def search_articles(
 ) -> TrainingArticleListResponse:
     user, _tenant = current
     items = store.search_training_articles(tenant_id=user.tenant_id, query=q)
-    results = [TrainingArticleOut(id=item.id, title=item.title, content=item.content, category=item.category) for item in items]
+    results = [
+        TrainingArticleOut(
+            id=item.id,
+            title=item.title,
+            content=item.content,
+            category=item.category,
+            featured=item.featured,
+        )
+        for item in items
+    ]
     return TrainingArticleListResponse(total=len(results), items=results)
 
 
@@ -64,10 +89,17 @@ def update_article(
             title=payload.title,
             content=payload.content,
             category=payload.category,
+            featured=payload.featured,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return TrainingArticleOut(id=item.id, title=item.title, content=item.content, category=item.category)
+    return TrainingArticleOut(
+        id=item.id,
+        title=item.title,
+        content=item.content,
+        category=item.category,
+        featured=item.featured,
+    )
 
 
 @router.get("/categories", response_model=TrainingCategoryListResponse)
