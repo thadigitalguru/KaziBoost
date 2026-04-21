@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from .auth import get_current_user_and_tenant
 from .contracts import error_responses
@@ -68,10 +68,11 @@ def schedule_report(
 
 @router.get("/reports/schedules", response_model=ReportScheduleListResponse)
 def list_schedules(
+    status: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> ReportScheduleListResponse:
     user, _tenant = current
-    items = [ReportScheduleResponse(**item) for item in store.list_report_schedules(tenant_id=user.tenant_id)]
+    items = [ReportScheduleResponse(**item) for item in store.list_report_schedules(tenant_id=user.tenant_id, status=status)]
     return ReportScheduleListResponse(total=len(items), items=items)
 
 

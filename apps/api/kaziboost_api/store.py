@@ -1447,8 +1447,11 @@ class InMemoryStore:
         self.report_schedules.setdefault(tenant_id, []).append(schedule)
         return schedule
 
-    def list_report_schedules(self, tenant_id: str) -> list[dict[str, str]]:
-        return list(self.report_schedules.get(tenant_id, []))
+    def list_report_schedules(self, tenant_id: str, status: str | None = None) -> list[dict[str, str]]:
+        items = list(self.report_schedules.get(tenant_id, []))
+        if status:
+            items = [item for item in items if item["status"] == status]
+        return items
 
     def cancel_report_schedule(self, tenant_id: str, schedule_id: str) -> dict[str, str]:
         items = self.report_schedules.get(tenant_id, [])
