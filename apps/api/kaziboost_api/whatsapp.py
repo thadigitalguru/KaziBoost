@@ -82,10 +82,11 @@ def incoming_webhook(
 @router.get("/conversations", response_model=WhatsAppConversationListResponse)
 def list_conversations(
     status: str | None = Query(default=None),
+    assigned_to: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppConversationListResponse:
     user, _tenant = current
-    conversations = store.list_whatsapp_conversations(tenant_id=user.tenant_id, status=status)
+    conversations = store.list_whatsapp_conversations(tenant_id=user.tenant_id, status=status, assigned_to=assigned_to)
     items = [
         WhatsAppConversationOut(
             thread_id=item.thread_id,
@@ -127,6 +128,27 @@ def handoff(
 ) -> WhatsAppConversationOut:
     user, _tenant = current
     conversation = store.whatsapp_handoff(tenant_id=user.tenant_id, thread_id=thread_id, assigned_to=payload.assigned_to)
+    return WhatsAppConversationOut(
+        thread_id=conversation.thread_id,
+        from_phone=conversation.from_phone,
+        status=conversation.status,
+        last_message=conversation.last_message,
+        assigned_to=conversation.assigned_to,
+        idempotent=False,
+    )
+
+
+@router.patch("/conversations/{thread_id}/assign", response_model=WhatsAppConversationOut)
+def assign_conversation(
+    thread_id: str,
+    payload: WhatsAppHandoffRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> WhatsAppConversationOut:
+    user, _tenant = current
+    try:
+        conversation = store.whatsapp_assign(tenant_id=user.tenant_id, thread_id=thread_id, assigned_to=payload.assigned_to)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return WhatsAppConversationOut(
         thread_id=conversation.thread_id,
         from_phone=conversation.from_phone,

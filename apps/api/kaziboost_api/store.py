@@ -821,11 +821,18 @@ class InMemoryStore:
         processed[event_id] = thread_id
         return conversation, False
 
-    def list_whatsapp_conversations(self, tenant_id: str, status: str | None = None) -> list[WhatsAppConversation]:
+    def list_whatsapp_conversations(
+        self,
+        tenant_id: str,
+        status: str | None = None,
+        assigned_to: str | None = None,
+    ) -> list[WhatsAppConversation]:
         thread_ids = self.whatsapp_by_tenant.get(tenant_id, [])
         items = [self.whatsapp_conversations[thread_id] for thread_id in thread_ids]
         if status:
             items = [item for item in items if item.status == status]
+        if assigned_to:
+            items = [item for item in items if item.assigned_to == assigned_to]
         return items
 
     def set_whatsapp_status(self, tenant_id: str, thread_id: str, status: str) -> WhatsAppConversation:
@@ -903,6 +910,14 @@ class InMemoryStore:
         if not conversation or conversation.tenant_id != tenant_id:
             raise ValueError("Conversation not found")
         conversation.status = "handoff"
+        conversation.assigned_to = assigned_to
+        conversation.updated_at = self._now_iso()
+        return conversation
+
+    def whatsapp_assign(self, tenant_id: str, thread_id: str, assigned_to: str) -> WhatsAppConversation:
+        conversation = self.whatsapp_conversations.get(thread_id)
+        if not conversation or conversation.tenant_id != tenant_id:
+            raise ValueError("Conversation not found")
         conversation.assigned_to = assigned_to
         conversation.updated_at = self._now_iso()
         return conversation
