@@ -161,6 +161,16 @@ class PaymentRefund:
     created_at: str
 
 
+@dataclass
+class TrainingArticle:
+    id: str
+    tenant_id: str
+    title: str
+    content: str
+    category: str
+    created_at: str
+
+
 class InMemoryStore:
     ALLOWED_ROLES = {"owner", "manager", "marketer", "support", "viewer"}
 
@@ -198,6 +208,9 @@ class InMemoryStore:
         self.payment_refunds: dict[str, PaymentRefund] = {}
         self.refunds_by_payment: dict[str, list[str]] = {}
         self.report_schedules: dict[str, list[dict[str, str]]] = {}
+
+        self.training_articles: dict[str, TrainingArticle] = {}
+        self.training_by_tenant: dict[str, list[str]] = {}
 
         self.audit_events: dict[str, AuditEvent] = {}
         self.audit_by_tenant: dict[str, list[str]] = {}
@@ -998,6 +1011,24 @@ class InMemoryStore:
                 "lead_to_payment_rate": round(lead_to_payment_rate, 4),
             },
         }
+
+    def create_training_article(self, tenant_id: str, title: str, content: str, category: str) -> TrainingArticle:
+        article = TrainingArticle(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            title=title,
+            content=content,
+            category=category,
+            created_at=self._now_iso(),
+        )
+        self.training_articles[article.id] = article
+        self.training_by_tenant.setdefault(tenant_id, []).append(article.id)
+        return article
+
+    def search_training_articles(self, tenant_id: str, query: str) -> list[TrainingArticle]:
+        q = query.strip().lower()
+        items = [self.training_articles[item_id] for item_id in self.training_by_tenant.get(tenant_id, [])]
+        return [item for item in items if q in item.title.lower() or q in item.content.lower() or q in item.category.lower()]
 
     def analytics_export_csv(self, tenant_id: str) -> str:
         metrics = self.analytics_dashboard(tenant_id=tenant_id)

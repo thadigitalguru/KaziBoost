@@ -13,6 +13,7 @@ from .models import HealthResponse, ReadinessResponse
 from .onboarding import router as onboarding_router
 from .payments import router as payments_router
 from .sites import router as sites_router
+from .training import router as training_router
 from .whatsapp import router as whatsapp_router
 from .store import store
 
@@ -26,6 +27,7 @@ app.include_router(payments_router)
 app.include_router(analytics_router)
 app.include_router(audit_router)
 app.include_router(onboarding_router)
+app.include_router(training_router)
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)

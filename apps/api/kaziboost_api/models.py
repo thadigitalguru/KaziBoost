@@ -393,3 +393,21 @@ class OnboardingChecklistResponse(BaseModel):
     completed: int
     total: int
     items: dict[str, bool]
+
+
+class TrainingArticleCreateRequest(BaseModel):
+    title: str = Field(min_length=4, max_length=200)
+    content: str = Field(min_length=10, max_length=5000)
+    category: str = Field(min_length=2, max_length=80)
+
+
+class TrainingArticleOut(BaseModel):
+    id: str
+    title: str
+    content: str
+    category: str
+
+
+class TrainingArticleListResponse(BaseModel):
+    total: int
+    items: list[TrainingArticleOut]
