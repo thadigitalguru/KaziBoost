@@ -1061,6 +1061,23 @@ class InMemoryStore:
             agg["amount"] += item.amount
         return {"total_refunds": len(items), "by_reason": by_reason}
 
+    def export_payments_csv(self, tenant_id: str) -> str:
+        items = [item for item in self.payments.values() if item.tenant_id == tenant_id]
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["payment_id", "reference", "amount", "currency", "status", "provider_tx_id", "reason"])
+        for item in items:
+            writer.writerow([
+                item.payment_id,
+                item.reference,
+                item.amount,
+                item.currency,
+                item.status,
+                item.provider_tx_id or "",
+                item.failure_reason or "",
+            ])
+        return output.getvalue()
+
     def failed_payments(self, tenant_id: str) -> list[Payment]:
         items = [item for item in self.payments.values() if item.tenant_id == tenant_id and item.status == "failed"]
         return sorted(items, key=lambda x: x.created_at, reverse=True)

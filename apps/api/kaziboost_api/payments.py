@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 
 from .auth import get_current_user_and_tenant
 from .contracts import error_responses
@@ -192,6 +192,15 @@ def payments_summary(
 ) -> PaymentsSummaryResponse:
     user, _tenant = current
     return PaymentsSummaryResponse(**store.payments_summary(tenant_id=user.tenant_id))
+
+
+@router.get("/export.csv")
+def export_csv(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> Response:
+    user, _tenant = current
+    payload = store.export_payments_csv(tenant_id=user.tenant_id)
+    return Response(content=payload, media_type="text/csv")
 
 
 @router.get("/failures", response_model=PaymentFailureListResponse)
