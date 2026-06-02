@@ -7,3 +7,5 @@ __pycache__/
 .env
 .DS_Store
 data/*.db
+apps/web/node_modules/
+apps/web/.next/

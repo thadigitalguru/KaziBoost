@@ -6,6 +6,10 @@ from .models import (
     AuthResponse,
     CreateTeammateRequest,
     LoginRequest,
+    MFAChallengeResponse,
+    MFAEnrollResponse,
+    MFAVerifyRequest,
+    MFAVerifyResponse,
     SignUpRequest,
     SignUpResponse,
     TenantOut,
@@ -132,6 +136,42 @@ def update_role(
         raise HTTPException(status_code=status_code, detail=message) from exc
 
     return SignUpResponse(user=_user_out(user), tenant=_tenant_out(tenant))
+
+
+@router.post("/mfa/enroll", response_model=MFAEnrollResponse, status_code=status.HTTP_201_CREATED)
+def enroll_mfa(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> MFAEnrollResponse:
+    user, _tenant = current
+    if user.role != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can enroll MFA")
+    payload = store.enroll_mfa(user_id=user.id)
+    return MFAEnrollResponse(**payload)
+
+
+@router.post("/mfa/challenge", response_model=MFAChallengeResponse, status_code=status.HTTP_201_CREATED)
+def create_mfa_challenge(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> MFAChallengeResponse:
+    user, _tenant = current
+    try:
+        challenge = store.create_mfa_challenge(user_id=user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return MFAChallengeResponse(
+        challenge_id=challenge["challenge_id"],
+        status=challenge["status"],
+        test_code=challenge["code"],
+    )
+
+
+@router.post("/mfa/verify", response_model=MFAVerifyResponse)
+def verify_mfa(
+    payload: MFAVerifyRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> MFAVerifyResponse:
+    user, _tenant = current
+    try:
+        challenge = store.verify_mfa_challenge(user_id=user.id, challenge_id=payload.challenge_id, code=payload.code)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return MFAVerifyResponse(challenge_id=challenge["challenge_id"], status=challenge["status"])
 
 
 @router.post("/logout")

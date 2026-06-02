@@ -46,6 +46,7 @@ class Site:
     primary_language: str
     status: str
     published_url: str | None = None
+    custom_domain: str | None = None
 
 
 @dataclass
@@ -229,6 +230,8 @@ class InMemoryStore:
         self.token_ttl_minutes = token_ttl_minutes
         self.login_block_minutes = login_block_minutes
         self.login_failures: dict[str, dict[str, object]] = {}
+        self.user_mfa: dict[str, dict[str, object]] = {}
+        self.mfa_challenges: dict[str, dict[str, str]] = {}
 
         self.sites: dict[str, Site] = {}
         self.pages: dict[str, Page] = {}
@@ -263,6 +266,8 @@ class InMemoryStore:
         self.payment_refunds: dict[str, PaymentRefund] = {}
         self.refunds_by_payment: dict[str, list[str]] = {}
         self.report_schedules: dict[str, list[dict[str, str]]] = {}
+        self.analytics_connectors: dict[str, list[dict[str, str]]] = {}
+        self.payment_providers: dict[str, list[dict[str, str]]] = {}
 
         self.training_articles: dict[str, TrainingArticle] = {}
         self.training_by_tenant: dict[str, list[str]] = {}
@@ -317,9 +322,20 @@ class InMemoryStore:
         self.audit_by_tenant.setdefault(tenant_id, []).append(event.id)
         return event
 
-    def list_audit_events(self, tenant_id: str, limit: int = 100) -> list[AuditEvent]:
+    def list_audit_events(
+        self,
+        tenant_id: str,
+        limit: int = 100,
+        event_type: str | None = None,
+        entity_type: str | None = None,
+    ) -> list[AuditEvent]:
         event_ids = self.audit_by_tenant.get(tenant_id, [])[-limit:]
-        return [self.audit_events[event_id] for event_id in reversed(event_ids)]
+        items = [self.audit_events[event_id] for event_id in reversed(event_ids)]
+        if event_type:
+            items = [item for item in items if item.event_type == event_type]
+        if entity_type:
+            items = [item for item in items if item.entity_type == entity_type]
+        return items
 
     def create_tenant_and_owner(self, business_name: str, owner_name: str, email: str, password: str) -> tuple[Tenant, User]:
         normalized_email = email.strip().lower()
@@ -435,11 +451,43 @@ class InMemoryStore:
     def revoke_token(self, token: str) -> None:
         self.tokens.pop(token, None)
 
+    def enroll_mfa(self, user_id: str) -> dict[str, object]:
+        secret = secrets.token_hex(8)
+        backup_codes = [secrets.token_hex(3) for _ in range(3)]
+        payload = {"secret": secret, "enabled": True, "backup_codes": backup_codes}
+        self.user_mfa[user_id] = payload
+        return payload
+
+    def create_mfa_challenge(self, user_id: str) -> dict[str, str]:
+        if user_id not in self.user_mfa:
+            raise ValueError("MFA is not enabled")
+        challenge_id = str(uuid.uuid4())
+        code = secrets.token_hex(3)
+        challenge = {"challenge_id": challenge_id, "user_id": user_id, "code": code, "status": "pending"}
+        self.mfa_challenges[challenge_id] = challenge
+        return challenge
+
+    def verify_mfa_challenge(self, user_id: str, challenge_id: str, code: str) -> dict[str, str]:
+        challenge = self.mfa_challenges.get(challenge_id)
+        if not challenge or challenge["user_id"] != user_id:
+            raise ValueError("MFA challenge not found")
+        valid_codes = [challenge["code"], *self.user_mfa.get(user_id, {}).get("backup_codes", [])]
+        if code not in valid_codes:
+            raise ValueError("Invalid MFA code")
+        challenge["status"] = "verified"
+        return challenge
+
     def force_expire_token_for_test(self, token: str) -> None:
         session = self.tokens.get(token)
         if not session:
             return
         session.expires_at = datetime.now(tz=UTC) - timedelta(seconds=1)
+
+    def list_sites(self, tenant_id: str, status: str | None = None) -> list[Site]:
+        items = [site for site in self.sites.values() if site.tenant_id == tenant_id]
+        if status:
+            items = [site for site in items if site.status == status]
+        return items
 
     def create_site(self, tenant_id: str, name: str, template_key: str, primary_language: str) -> Site:
         site = Site(
@@ -454,18 +502,34 @@ class InMemoryStore:
         self.pages_by_site[site.id] = []
         return site
 
+    def delete_site(self, tenant_id: str, site_id: str) -> None:
+        site = self.get_site(tenant_id, site_id)
+        for page_id in self.pages_by_site.get(site.id, []):
+            self.pages.pop(page_id, None)
+        self.pages_by_site.pop(site.id, None)
+        self.seo_assets.pop(site.id, None)
+        self.sites.pop(site.id, None)
+
     def get_site(self, tenant_id: str, site_id: str) -> Site:
         site = self.sites.get(site_id)
         if not site or site.tenant_id != tenant_id:
             raise ValueError("Site not found")
         return site
 
+    def unpublish_site(self, tenant_id: str, site_id: str) -> Site:
+        site = self.get_site(tenant_id, site_id)
+        site.status = "draft"
+        site.published_url = None
+        self.seo_assets.pop(site_id, None)
+        return site
+
     def add_page(self, tenant_id: str, site_id: str, slug: str, title: str, language: str, body_blocks: list[str]) -> Page:
         self.get_site(tenant_id, site_id)
         existing_page_ids = self.pages_by_site.get(site_id, [])
         for page_id in existing_page_ids:
-            if self.pages[page_id].slug == slug:
-                raise ValueError("Page slug already exists")
+            existing = self.pages[page_id]
+            if existing.slug == slug and existing.language == language:
+                raise ValueError("Page slug already exists for language")
 
         page = Page(
             id=str(uuid.uuid4()),
@@ -480,16 +544,40 @@ class InMemoryStore:
         self.pages_by_site.setdefault(site_id, []).append(page.id)
         return page
 
-    def get_page_by_slug(self, tenant_id: str, site_id: str, slug: str) -> Page:
-        self.get_site(tenant_id, site_id)
+    def get_page_by_slug(self, tenant_id: str, site_id: str, slug: str, language: str | None = None) -> Page:
+        site = self.get_site(tenant_id, site_id)
+        candidates: list[Page] = []
         for page_id in self.pages_by_site.get(site_id, []):
             page = self.pages[page_id]
             if page.slug == slug:
+                candidates.append(page)
+        if language:
+            for page in candidates:
+                if page.language == language:
+                    return page
+        for page in candidates:
+            if page.language == site.primary_language:
                 return page
+        if candidates:
+            return candidates[0]
         raise ValueError("Page not found")
+
+    def get_site_page(self, tenant_id: str, site_id: str, page_id: str) -> Page:
+        self.get_site(tenant_id, site_id)
+        page = self.pages.get(page_id)
+        if not page or page.tenant_id != tenant_id or page.site_id != site_id:
+            raise ValueError("Page not found")
+        return page
 
     def _site_pages(self, site_id: str) -> list[Page]:
         return [self.pages[page_id] for page_id in self.pages_by_site.get(site_id, [])]
+
+    def list_site_pages(self, tenant_id: str, site_id: str, language: str | None = None) -> list[Page]:
+        self.get_site(tenant_id, site_id)
+        items = self._site_pages(site_id)
+        if language:
+            items = [item for item in items if item.language == language]
+        return items
 
     def publish_site(self, tenant_id: str, site_id: str) -> Site:
         site = self.get_site(tenant_id, site_id)
@@ -497,13 +585,18 @@ class InMemoryStore:
         if not pages:
             raise ValueError("Cannot publish site without pages")
 
-        published_url = f"https://{site.id}.kaziboost.local"
+        base_domain = site.custom_domain or f"{site.id}.kaziboost.local"
+        published_url = f"https://{base_domain}"
         site.published_url = published_url
         site.status = "published"
 
         urls_xml = []
+        seen_paths: set[str] = set()
         for page in pages:
             path = "/" if page.slug == "home" else f"/{page.slug}"
+            if path in seen_paths:
+                continue
+            seen_paths.add(path)
             urls_xml.append(f"<url><loc>{published_url}{path}</loc></url>")
         sitemap_xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset>" + "".join(urls_xml) + "</urlset>"
 
@@ -536,9 +629,14 @@ class InMemoryStore:
         if not site.published_url:
             raise ValueError("Site is not published")
         items: list[dict[str, str]] = []
+        seen: set[tuple[str, str]] = set()
         for page in self._site_pages(site_id):
             path = "/" if page.slug == "home" else f"/{page.slug}"
-            items.append({"language": page.language, "slug": page.slug, "href": f"{site.published_url}{path}"})
+            key = (page.slug, page.language)
+            if key in seen:
+                continue
+            seen.add(key)
+            items.append({"language": page.language, "slug": page.slug, "href": f"{site.published_url}{path}?language={page.language}"})
         return items
 
     def create_crm_form(self, tenant_id: str, name: str, kind: str, fields: list[str]) -> CRMForm:
@@ -623,6 +721,14 @@ class InMemoryStore:
             items = [contact for contact in items if contact.consent.get("email_marketing") is email_marketing]
         return items
 
+    def search_contacts(self, tenant_id: str, query: str) -> list[Contact]:
+        q = query.strip().lower()
+        items = [self.contacts[contact_id] for contact_id in self.contacts_by_tenant.get(tenant_id, [])]
+        return [
+            contact for contact in items
+            if q in contact.name.lower() or q in contact.email.lower() or q in contact.phone.lower()
+        ]
+
     def export_contacts_csv(self, tenant_id: str, source: str | None = None, tag: str | None = None) -> str:
         contacts = self.list_contacts(tenant_id=tenant_id, source=source, tag=tag)
         output = io.StringIO()
@@ -642,6 +748,20 @@ class InMemoryStore:
             )
         return output.getvalue()
 
+    def update_contact_tags(self, tenant_id: str, contact_id: str, tags: list[str], actor_user_id: str | None = None) -> Contact:
+        contact = self.get_contact(tenant_id=tenant_id, contact_id=contact_id)
+        normalized_tags = sorted({tag.strip() for tag in tags if tag.strip()})
+        contact.tags = normalized_tags
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="contact.tags.updated",
+            entity_type="contact",
+            entity_id=contact_id,
+            actor_user_id=actor_user_id,
+            metadata={"tags": ",".join(normalized_tags)},
+        )
+        return contact
+
     def create_segment(self, tenant_id: str, name: str, tag: str | None, source: str | None) -> CRMSegment:
         segment = CRMSegment(
             id=str(uuid.uuid4()),
@@ -660,9 +780,35 @@ class InMemoryStore:
             raise ValueError("Segment not found")
         return self.list_contacts(tenant_id=tenant_id, source=segment.source, tag=segment.tag)
 
+    def get_segment_contact_count(self, tenant_id: str, segment_id: str) -> int:
+        return len(self.get_segment_contacts(tenant_id=tenant_id, segment_id=segment_id))
+
     def list_segments(self, tenant_id: str) -> list[CRMSegment]:
         ids = self.crm_segments_by_tenant.get(tenant_id, [])
         return [self.crm_segments[item_id] for item_id in ids if item_id in self.crm_segments]
+
+    def get_segment(self, tenant_id: str, segment_id: str) -> CRMSegment:
+        segment = self.crm_segments.get(segment_id)
+        if not segment or segment.tenant_id != tenant_id:
+            raise ValueError("Segment not found")
+        return segment
+
+    def update_segment(
+        self,
+        tenant_id: str,
+        segment_id: str,
+        name: str | None = None,
+        tag: str | None = None,
+        source: str | None = None,
+    ) -> CRMSegment:
+        segment = self.crm_segments.get(segment_id)
+        if not segment or segment.tenant_id != tenant_id:
+            raise ValueError("Segment not found")
+        if name is not None:
+            segment.name = name
+        segment.tag = tag
+        segment.source = source
+        return segment
 
     def delete_segment(self, tenant_id: str, segment_id: str) -> None:
         segment = self.crm_segments.get(segment_id)
@@ -703,11 +849,19 @@ class InMemoryStore:
         )
         return campaign
 
-    def campaign_history(self, tenant_id: str, channel: str | None = None) -> list[CampaignDispatch]:
+    def campaign_history(
+        self,
+        tenant_id: str,
+        channel: str | None = None,
+        subject: str | None = None,
+    ) -> list[CampaignDispatch]:
         ids = self.campaigns_by_tenant.get(tenant_id, [])
         items = [self.campaign_dispatches[c_id] for c_id in reversed(ids)]
         if channel:
             items = [item for item in items if item.channel == channel]
+        if subject:
+            lowered = subject.strip().lower()
+            items = [item for item in items if lowered in item.subject.lower()]
         return items
 
     def campaign_stats(self, tenant_id: str) -> dict[str, object]:
@@ -938,6 +1092,12 @@ class InMemoryStore:
     def list_whatsapp_faq(self, tenant_id: str) -> list[dict[str, str]]:
         return list(self.whatsapp_faq_by_tenant.get(tenant_id, []))
 
+    def delete_whatsapp_faq(self, tenant_id: str, faq_index: int) -> dict[str, str]:
+        items = self.whatsapp_faq_by_tenant.get(tenant_id, [])
+        if faq_index < 0 or faq_index >= len(items):
+            raise ValueError("FAQ not found")
+        return items.pop(faq_index)
+
     def whatsapp_bot_reply(self, tenant_id: str, thread_id: str) -> dict[str, str]:
         conversation = self.whatsapp_conversations.get(thread_id)
         if not conversation or conversation.tenant_id != tenant_id:
@@ -972,6 +1132,15 @@ class InMemoryStore:
         conversation.assigned_to = assigned_to
         conversation.updated_at = self._now_iso()
         return conversation
+
+    def whatsapp_human_reply(self, tenant_id: str, thread_id: str, message: str, sent_by: str) -> dict[str, str]:
+        conversation = self.whatsapp_conversations.get(thread_id)
+        if not conversation or conversation.tenant_id != tenant_id:
+            raise ValueError("Conversation not found")
+        conversation.last_message = message
+        conversation.status = "open"
+        conversation.updated_at = self._now_iso()
+        return {"thread_id": thread_id, "message": message, "sent_by": sent_by, "status": "sent"}
 
     def initiate_mpesa_payment(
         self,
@@ -1047,6 +1216,20 @@ class InMemoryStore:
         if provider_tx_id:
             items = [payment for payment in items if payment.provider_tx_id == provider_tx_id]
         return items
+
+    def payments_reconciliation_summary(self, tenant_id: str, contact_id: str) -> dict[str, object]:
+        items = self.list_payments_by_contact(tenant_id=tenant_id, contact_id=contact_id)
+        by_status: dict[str, int] = {}
+        total_amount = 0
+        for item in items:
+            by_status[item.status] = by_status.get(item.status, 0) + 1
+            total_amount += item.amount
+        return {
+            "contact_id": contact_id,
+            "total": len(items),
+            "by_status": by_status,
+            "total_amount": total_amount,
+        }
 
     def get_payment(self, tenant_id: str, payment_id: str) -> Payment:
         payment = self.payments.get(payment_id)
@@ -1203,6 +1386,21 @@ class InMemoryStore:
         tenant_workspaces[workspace] = keywords
         return {"workspace": workspace, "count": len(keywords), "keywords": keywords}
 
+    def rename_saved_keywords_workspace(self, tenant_id: str, workspace: str, new_workspace: str) -> dict[str, object]:
+        current = self.get_saved_keywords(tenant_id=tenant_id, workspace=workspace)
+        keywords = list(current["keywords"])
+        self.save_keywords(tenant_id=tenant_id, workspace=new_workspace, keywords=keywords)
+        self.delete_saved_keywords_workspace(tenant_id=tenant_id, workspace=workspace)
+        return {"workspace": new_workspace, "count": len(keywords), "keywords": keywords}
+
+    def list_keyword_workspaces(self, tenant_id: str) -> list[dict[str, object]]:
+        tenant_workspaces = self.keyword_workspaces.setdefault(tenant_id, {})
+        items = [
+            {"workspace": workspace, "count": len(keywords)}
+            for workspace, keywords in tenant_workspaces.items()
+        ]
+        return sorted(items, key=lambda item: item["workspace"])
+
     def delete_saved_keywords_workspace(self, tenant_id: str, workspace: str) -> None:
         tenant_workspaces = self.keyword_workspaces.setdefault(tenant_id, {})
         tenant_workspaces.pop(workspace, None)
@@ -1270,6 +1468,36 @@ class InMemoryStore:
     ) -> list[dict[str, object]]:
         return self.seo_persistence.list_generated_content(tenant_id=tenant_id, limit=limit, language=language)
 
+    def generate_topic_map(self, seed_keyword: str, location: str, language: str) -> dict[str, object]:
+        seed = seed_keyword.strip()
+        seed_title = seed.title()
+        if language == "sw":
+            pillar_topic = f"Mwongozo wa {seed_title} kwa biashara za {location}"
+            cluster_topics = [
+                f"Jinsi ya kupata leads za {seed} {location}",
+                f"SEO ya ndani kwa {seed} {location}",
+                f"WhatsApp conversion kwa {seed} {location}",
+                f"Bei na promosheni za {seed} {location}",
+            ]
+        else:
+            pillar_topic = f"{seed_title} Growth Guide for {location} Businesses"
+            cluster_topics = [
+                f"Local SEO for {seed} in {location}",
+                f"WhatsApp funnels for {seed}",
+                f"Pricing strategy for {seed} in {location}",
+                f"Landing pages that convert {seed} leads",
+            ]
+        internal_links = [
+            {"from": pillar_topic, "to": cluster_topics[0], "anchor_text": f"{seed} local SEO"},
+            {"from": pillar_topic, "to": cluster_topics[1], "anchor_text": f"{seed} WhatsApp funnel"},
+            {"from": pillar_topic, "to": cluster_topics[2], "anchor_text": f"{seed} pricing guide"},
+        ]
+        return {
+            "pillar_topic": pillar_topic,
+            "cluster_topics": cluster_topics,
+            "internal_links": internal_links,
+        }
+
     def create_content_calendar_item(
         self,
         tenant_id: str,
@@ -1297,6 +1525,8 @@ class InMemoryStore:
         tenant_id: str,
         status: str | None = None,
         language: str | None = None,
+        on_or_after: str | None = None,
+        on_or_before: str | None = None,
     ) -> list[ContentCalendarItem]:
         ids = self.seo_calendar_by_tenant.get(tenant_id, [])
         items = [self.seo_calendar[item_id] for item_id in reversed(ids)]
@@ -1304,6 +1534,10 @@ class InMemoryStore:
             items = [item for item in items if item.status == status]
         if language:
             items = [item for item in items if item.language == language]
+        if on_or_after:
+            items = [item for item in items if item.scheduled_for >= on_or_after]
+        if on_or_before:
+            items = [item for item in items if item.scheduled_for <= on_or_before]
         return items
 
     def update_content_calendar_status(self, tenant_id: str, item_id: str, status: str) -> ContentCalendarItem:
@@ -1344,6 +1578,21 @@ class InMemoryStore:
         }
         completed = sum(1 for value in items.values() if value)
         return {"completed": completed, "total": len(items), "items": items}
+
+    def onboarding_recommendations(self, tenant_id: str) -> list[dict[str, str]]:
+        checklist = self.onboarding_checklist(tenant_id=tenant_id)["items"]
+        recommendations: list[dict[str, str]] = []
+        if not checklist["site_published"]:
+            recommendations.append({"key": "publish_site", "title": "Publish your first site", "action": "/v1/sites"})
+        if not checklist["seo_content_generated"]:
+            recommendations.append({"key": "generate_seo", "title": "Generate your first SEO article", "action": "/v1/seo/content/generate"})
+        if not checklist["first_lead_captured"]:
+            recommendations.append({"key": "capture_lead", "title": "Create a CRM form and capture a lead", "action": "/v1/crm/forms"})
+        if not checklist["whatsapp_connected"]:
+            recommendations.append({"key": "connect_whatsapp", "title": "Connect WhatsApp and handle your first chat", "action": "/v1/whatsapp/webhook/incoming"})
+        if not checklist["first_payment_created"]:
+            recommendations.append({"key": "create_payment", "title": "Create your first payment flow", "action": "/v1/payments/mpesa/initiate"})
+        return recommendations
 
     def analytics_dashboard(self, tenant_id: str) -> dict[str, int]:
         total_leads = len(self.contacts_by_tenant.get(tenant_id, []))
@@ -1399,6 +1648,12 @@ class InMemoryStore:
             series.append({"date": day.isoformat(), "leads": total_leads, "payments": total_payments})
         return {"days": days, "series": series}
 
+    def analytics_dashboard_summary(self, tenant_id: str, days: int) -> dict[str, object]:
+        return {
+            "kpis": self.analytics_dashboard(tenant_id=tenant_id),
+            "trend": self.analytics_trend_snapshot(tenant_id=tenant_id, days=days),
+        }
+
     def create_training_article(self, tenant_id: str, title: str, content: str, category: str) -> TrainingArticle:
         article = TrainingArticle(
             id=str(uuid.uuid4()),
@@ -1414,10 +1669,32 @@ class InMemoryStore:
         self.training_by_tenant.setdefault(tenant_id, []).append(article.id)
         return article
 
-    def search_training_articles(self, tenant_id: str, query: str) -> list[TrainingArticle]:
+    def duplicate_training_article(self, tenant_id: str, article_id: str) -> TrainingArticle:
+        article = self.training_articles.get(article_id)
+        if not article or article.tenant_id != tenant_id:
+            raise ValueError("Article not found")
+        return self.create_training_article(
+            tenant_id=tenant_id,
+            title=f"{article.title} (Copy)",
+            content=article.content,
+            category=article.category,
+        )
+
+    def search_training_articles(
+        self,
+        tenant_id: str,
+        query: str,
+        category: str | None = None,
+        limit: int | None = None,
+    ) -> list[TrainingArticle]:
         q = query.strip().lower()
         items = [self.training_articles[item_id] for item_id in self.training_by_tenant.get(tenant_id, [])]
-        return [item for item in items if q in item.title.lower() or q in item.content.lower() or q in item.category.lower()]
+        items = [item for item in items if q in item.title.lower() or q in item.content.lower() or q in item.category.lower()]
+        if category:
+            items = [item for item in items if item.category == category]
+        if limit is not None:
+            items = items[:limit]
+        return items
 
     def update_training_article(
         self,
@@ -1477,6 +1754,14 @@ class InMemoryStore:
         items = self.list_training_articles(tenant_id=tenant_id, category=category)
         return sorted(items, key=lambda x: x.views, reverse=True)[:limit]
 
+    def related_training_articles(self, tenant_id: str, article_id: str, limit: int = 5) -> list[TrainingArticle]:
+        article = self.get_training_article(tenant_id=tenant_id, article_id=article_id)
+        items = [
+            item for item in self.list_training_articles(tenant_id=tenant_id, category=article.category)
+            if item.id != article.id
+        ]
+        return items[:limit]
+
     def analytics_export_csv(self, tenant_id: str) -> str:
         metrics = self.analytics_dashboard(tenant_id=tenant_id)
         output = io.StringIO()
@@ -1485,6 +1770,104 @@ class InMemoryStore:
         for metric, value in metrics.items():
             writer.writerow([metric, value])
         return output.getvalue()
+
+    def analytics_export_pdf(self, tenant_id: str) -> bytes:
+        metrics = self.analytics_dashboard(tenant_id=tenant_id)
+        lines = ["KaziBoost Analytics Report", ""] + [f"{metric}: {value}" for metric, value in metrics.items()]
+        body = "\n".join(lines)
+        return body.encode("utf-8")
+
+    def list_site_templates(self) -> list[dict[str, str]]:
+        return [
+            {"key": "salon-modern", "name": "Salon Modern", "category": "beauty", "primary_language": "en"},
+            {"key": "hardware-shop", "name": "Hardware Shop", "category": "retail", "primary_language": "sw"},
+            {"key": "clinic-basic", "name": "Clinic Basic", "category": "health", "primary_language": "en"},
+            {"key": "restaurant-fast", "name": "Restaurant Fast", "category": "food", "primary_language": "en"},
+            {"key": "tutor-pro", "name": "Tutor Pro", "category": "education", "primary_language": "en"},
+        ]
+
+    def create_site_domain(self, tenant_id: str, site_id: str, domain: str) -> Site:
+        site = self.get_site(tenant_id, site_id)
+        normalized = domain.strip().lower()
+        if not re.fullmatch(r"[a-z0-9.-]+\.[a-z]{2,}", normalized):
+            raise ValueError("Invalid domain")
+        site.custom_domain = normalized
+        if site.status == "published":
+            self.publish_site(tenant_id=tenant_id, site_id=site_id)
+        return site
+
+    def create_analytics_connector(self, tenant_id: str, provider: str, property_id: str, status: str) -> dict[str, str]:
+        connector = {
+            "id": str(uuid.uuid4()),
+            "provider": provider,
+            "property_id": property_id,
+            "status": status,
+        }
+        self.analytics_connectors.setdefault(tenant_id, []).append(connector)
+        return connector
+
+    def list_analytics_connectors(
+        self,
+        tenant_id: str,
+        provider: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, str]]:
+        items = list(self.analytics_connectors.get(tenant_id, []))
+        if provider:
+            items = [item for item in items if item["provider"] == provider]
+        if status:
+            items = [item for item in items if item["status"] == status]
+        return items
+
+    def update_analytics_connector(self, tenant_id: str, connector_id: str, status: str) -> dict[str, str]:
+        items = self.analytics_connectors.get(tenant_id, [])
+        for item in items:
+            if item["id"] == connector_id:
+                item["status"] = status
+                return item
+        raise ValueError("Connector not found")
+
+    def delete_analytics_connector(self, tenant_id: str, connector_id: str) -> dict[str, str]:
+        items = self.analytics_connectors.get(tenant_id, [])
+        for index, item in enumerate(items):
+            if item["id"] == connector_id:
+                return items.pop(index)
+        raise ValueError("Connector not found")
+
+    def create_payment_provider(self, tenant_id: str, provider: str, channel: str, status: str) -> dict[str, str]:
+        item = {
+            "id": str(uuid.uuid4()),
+            "provider": provider,
+            "channel": channel,
+            "status": status,
+        }
+        self.payment_providers.setdefault(tenant_id, []).append(item)
+        return item
+
+    def list_payment_providers(
+        self,
+        tenant_id: str,
+        status: str | None = None,
+    ) -> list[dict[str, str]]:
+        items = list(self.payment_providers.get(tenant_id, []))
+        if status:
+            items = [item for item in items if item["status"] == status]
+        return items
+
+    def update_payment_provider(self, tenant_id: str, provider_id: str, status: str) -> dict[str, str]:
+        items = self.payment_providers.get(tenant_id, [])
+        for item in items:
+            if item["id"] == provider_id:
+                item["status"] = status
+                return item
+        raise ValueError("Payment provider not found")
+
+    def delete_payment_provider(self, tenant_id: str, provider_id: str) -> dict[str, str]:
+        items = self.payment_providers.get(tenant_id, [])
+        for index, item in enumerate(items):
+            if item["id"] == provider_id:
+                return items.pop(index)
+        raise ValueError("Payment provider not found")
 
     def schedule_report(self, tenant_id: str, email: str, frequency: str) -> dict[str, str]:
         schedule = {
@@ -1509,6 +1892,14 @@ class InMemoryStore:
         if frequency:
             items = [item for item in items if item["frequency"] == frequency]
         return items
+
+    def update_report_schedule(self, tenant_id: str, schedule_id: str, frequency: str) -> dict[str, str]:
+        items = self.report_schedules.get(tenant_id, [])
+        for item in items:
+            if item["id"] == schedule_id:
+                item["frequency"] = frequency
+                return item
+        raise ValueError("Schedule not found")
 
     def cancel_report_schedule(self, tenant_id: str, schedule_id: str) -> dict[str, str]:
         items = self.report_schedules.get(tenant_id, [])

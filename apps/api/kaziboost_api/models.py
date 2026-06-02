@@ -64,6 +64,28 @@ class SignUpResponse(BaseModel):
     tenant: TenantOut
 
 
+class MFAEnrollResponse(BaseModel):
+    enabled: bool
+    secret: str
+    backup_codes: list[str]
+
+
+class MFAChallengeResponse(BaseModel):
+    challenge_id: str
+    status: str
+    test_code: str
+
+
+class MFAVerifyRequest(BaseModel):
+    challenge_id: str
+    code: str = Field(min_length=4, max_length=20)
+
+
+class MFAVerifyResponse(BaseModel):
+    challenge_id: str
+    status: str
+
+
 class SiteCreateRequest(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     template_key: str = Field(min_length=2, max_length=80)
@@ -77,6 +99,40 @@ class SiteOut(BaseModel):
     primary_language: str
     status: str
     published_url: str | None = None
+    custom_domain: str | None = None
+
+
+class SiteDomainRequest(BaseModel):
+    domain: str = Field(min_length=4, max_length=255)
+
+
+class SiteDomainResponse(BaseModel):
+    site_id: str
+    domain: str
+    status: str
+
+
+class SiteStatusResponse(BaseModel):
+    site_id: str
+    status: str
+    published_url: str | None = None
+
+
+class SiteTemplateItem(BaseModel):
+    key: str
+    name: str
+    category: str
+    primary_language: str
+
+
+class SiteTemplateListResponse(BaseModel):
+    total: int
+    items: list[SiteTemplateItem]
+
+
+class SiteListResponse(BaseModel):
+    total: int
+    items: list[SiteOut]
 
 
 class PageCreateRequest(BaseModel):
@@ -93,6 +149,15 @@ class PageOut(BaseModel):
     title: str
     language: str
     body_blocks: list[str]
+
+
+class PageListResponse(BaseModel):
+    total: int
+    items: list[PageOut]
+
+
+class WorkspaceRenameRequest(BaseModel):
+    new_workspace: str = Field(min_length=2, max_length=80)
 
 
 class SEOAssetLinks(BaseModel):
@@ -173,6 +238,11 @@ class ContactListResponse(BaseModel):
     items: list[ContactOut]
 
 
+class ContactSearchResponse(BaseModel):
+    total: int
+    items: list[ContactOut]
+
+
 class ContactTimelineResponse(BaseModel):
     events: list[ContactTimelineEvent]
 
@@ -198,6 +268,10 @@ class ContactConsentUpdateRequest(BaseModel):
     sms_marketing: bool
 
 
+class ContactTagsUpdateRequest(BaseModel):
+    tags: list[str] = Field(default_factory=list)
+
+
 class ContactExportResponse(BaseModel):
     contact: ContactOut
     timeline: list[ContactTimelineEvent]
@@ -209,11 +283,25 @@ class SegmentCreateRequest(BaseModel):
     source: str | None = None
 
 
+class SegmentUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    tag: str | None = None
+    source: str | None = None
+
+
 class SegmentOut(BaseModel):
     id: str
     name: str
     tag: str | None = None
     source: str | None = None
+
+
+class SegmentDetailResponse(BaseModel):
+    id: str
+    name: str
+    tag: str | None = None
+    source: str | None = None
+    contact_count: int
 
 
 class SegmentListResponse(BaseModel):
@@ -301,9 +389,37 @@ class SaveKeywordsResponse(BaseModel):
     keywords: list[str]
 
 
+class KeywordWorkspaceItem(BaseModel):
+    workspace: str
+    count: int
+
+
+class KeywordWorkspaceListResponse(BaseModel):
+    total: int
+    items: list[KeywordWorkspaceItem]
+
+
 class ContentHistoryResponse(BaseModel):
     total: int
     items: list[dict]
+
+
+class TopicMapGenerateRequest(BaseModel):
+    seed_keyword: str = Field(min_length=2, max_length=120)
+    location: str = Field(min_length=2, max_length=80)
+    language: str = Field(default="en", min_length=2, max_length=10)
+
+
+class TopicMapInternalLink(BaseModel):
+    from_: str = Field(alias="from")
+    to: str
+    anchor_text: str
+
+
+class TopicMapResponse(BaseModel):
+    pillar_topic: str
+    cluster_topics: list[str]
+    internal_links: list[dict[str, str]]
 
 
 class ContentCalendarCreateRequest(BaseModel):
@@ -383,6 +499,17 @@ class WhatsAppHandoffRequest(BaseModel):
     assigned_to: str = Field(min_length=2, max_length=80)
 
 
+class WhatsAppHumanReplyRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)
+
+
+class WhatsAppHumanReplyResponse(BaseModel):
+    thread_id: str
+    message: str
+    sent_by: str
+    status: str
+
+
 class MpesaInitiateRequest(BaseModel):
     phone: str = Field(min_length=7, max_length=30)
     amount: int = Field(ge=1)
@@ -428,6 +555,32 @@ class ReportScheduleListResponse(BaseModel):
     items: list[ReportScheduleResponse]
 
 
+class ReportScheduleUpdateRequest(BaseModel):
+    frequency: str = Field(min_length=4, max_length=20)
+
+
+class AnalyticsConnectorRequest(BaseModel):
+    provider: str = Field(min_length=2, max_length=40)
+    property_id: str = Field(min_length=2, max_length=120)
+    status: str = Field(default="connected", min_length=4, max_length=20)
+
+
+class AnalyticsConnectorResponse(BaseModel):
+    id: str
+    provider: str
+    property_id: str
+    status: str
+
+
+class AnalyticsConnectorListResponse(BaseModel):
+    total: int
+    items: list[AnalyticsConnectorResponse]
+
+
+class AnalyticsConnectorUpdateRequest(BaseModel):
+    status: str = Field(min_length=4, max_length=20)
+
+
 class AnalyticsKpis(BaseModel):
     total_leads: int
     open_conversations: int
@@ -437,6 +590,11 @@ class AnalyticsKpis(BaseModel):
 
 class AnalyticsDashboardResponse(BaseModel):
     kpis: AnalyticsKpis
+
+
+class AnalyticsDashboardSummaryResponse(BaseModel):
+    kpis: AnalyticsKpis
+    trend: dict[str, object]
 
 
 class AnalyticsFunnelResponse(BaseModel):
@@ -453,6 +611,13 @@ class MpesaCallbackResponse(BaseModel):
 class PaymentListResponse(BaseModel):
     total: int
     items: list[PaymentOut]
+
+
+class PaymentReconciliationSummaryResponse(BaseModel):
+    contact_id: str
+    total: int
+    by_status: dict[str, int]
+    total_amount: int
 
 
 class RefundRequest(BaseModel):
@@ -501,6 +666,28 @@ class PaymentFailureListResponse(BaseModel):
     items: list[PaymentFailureItem]
 
 
+class PaymentProviderRequest(BaseModel):
+    provider: str = Field(min_length=2, max_length=40)
+    channel: str = Field(min_length=2, max_length=40)
+    status: str = Field(default="active", min_length=3, max_length=20)
+
+
+class PaymentProviderResponse(BaseModel):
+    id: str
+    provider: str
+    channel: str
+    status: str
+
+
+class PaymentProviderListResponse(BaseModel):
+    total: int
+    items: list[PaymentProviderResponse]
+
+
+class PaymentProviderUpdateRequest(BaseModel):
+    status: str = Field(min_length=3, max_length=20)
+
+
 class AuditEventOut(BaseModel):
     id: str
     event_type: str
@@ -522,6 +709,11 @@ class OnboardingChecklistResponse(BaseModel):
     items: dict[str, bool]
 
 
+class OnboardingRecommendationsResponse(BaseModel):
+    total: int
+    items: list[dict[str, str]]
+
+
 class TrainingArticleCreateRequest(BaseModel):
     title: str = Field(min_length=4, max_length=200)
     content: str = Field(min_length=10, max_length=5000)
@@ -538,6 +730,11 @@ class TrainingArticleOut(BaseModel):
 
 
 class TrainingArticleListResponse(BaseModel):
+    total: int
+    items: list[TrainingArticleOut]
+
+
+class TrainingSearchResponse(BaseModel):
     total: int
     items: list[TrainingArticleOut]
 

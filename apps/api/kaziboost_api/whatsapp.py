@@ -7,6 +7,8 @@ from .models import (
     WhatsAppConversationOut,
     WhatsAppFAQCreateRequest,
     WhatsAppHandoffRequest,
+    WhatsAppHumanReplyRequest,
+    WhatsAppHumanReplyResponse,
     WhatsAppIncomingRequest,
     WhatsAppReminderListResponse,
     WhatsAppReminderOut,
@@ -123,6 +125,19 @@ def list_faq(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)
     return {"total": len(items), "items": items}
 
 
+@router.delete("/faq/{faq_index}")
+def delete_faq(
+    faq_index: int,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _tenant = current
+    try:
+        item = store.delete_whatsapp_faq(tenant_id=user.tenant_id, faq_index=faq_index)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"status": "deleted", "item": item}
+
+
 @router.post("/conversations/{thread_id}/reply-bot", response_model=WhatsAppBotReplyResponse)
 def bot_reply(
     thread_id: str,
@@ -131,6 +146,25 @@ def bot_reply(
     user, _tenant = current
     reply = store.whatsapp_bot_reply(tenant_id=user.tenant_id, thread_id=thread_id)
     return WhatsAppBotReplyResponse(**reply)
+
+
+@router.post("/conversations/{thread_id}/reply-human", response_model=WhatsAppHumanReplyResponse)
+def human_reply(
+    thread_id: str,
+    payload: WhatsAppHumanReplyRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> WhatsAppHumanReplyResponse:
+    user, _tenant = current
+    try:
+        item = store.whatsapp_human_reply(
+            tenant_id=user.tenant_id,
+            thread_id=thread_id,
+            message=payload.message,
+            sent_by=user.owner_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return WhatsAppHumanReplyResponse(**item)
 
 
 @router.post("/conversations/{thread_id}/handoff", response_model=WhatsAppConversationOut)

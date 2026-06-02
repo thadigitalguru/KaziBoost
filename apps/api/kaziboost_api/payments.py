@@ -10,7 +10,12 @@ from .models import (
     PaymentFailureListResponse,
     PaymentListResponse,
     PaymentOut,
+    PaymentProviderListResponse,
+    PaymentProviderRequest,
+    PaymentProviderResponse,
+    PaymentProviderUpdateRequest,
     PaymentsMonthlyReportResponse,
+    PaymentReconciliationSummaryResponse,
     PaymentsSummaryResponse,
     RefundListResponse,
     RefundReportResponse,
@@ -22,6 +27,58 @@ from .payments_security import verify_mpesa_callback_signature
 
 
 router = APIRouter(prefix="/v1/payments", tags=["payments"])
+
+
+@router.post("/providers", status_code=status.HTTP_201_CREATED, response_model=PaymentProviderResponse)
+def create_provider(
+    payload: PaymentProviderRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> PaymentProviderResponse:
+    user, _tenant = current
+    item = store.create_payment_provider(
+        tenant_id=user.tenant_id,
+        provider=payload.provider,
+        channel=payload.channel,
+        status=payload.status,
+    )
+    return PaymentProviderResponse(**item)
+
+
+@router.get("/providers", response_model=PaymentProviderListResponse)
+def list_providers(
+    status: str | None = Query(default=None),
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> PaymentProviderListResponse:
+    user, _tenant = current
+    items = [PaymentProviderResponse(**item) for item in store.list_payment_providers(tenant_id=user.tenant_id, status=status)]
+    return PaymentProviderListResponse(total=len(items), items=items)
+
+
+@router.patch("/providers/{provider_id}", response_model=PaymentProviderResponse)
+def update_provider(
+    provider_id: str,
+    payload: PaymentProviderUpdateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> PaymentProviderResponse:
+    user, _tenant = current
+    try:
+        item = store.update_payment_provider(tenant_id=user.tenant_id, provider_id=provider_id, status=payload.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return PaymentProviderResponse(**item)
+
+
+@router.delete("/providers/{provider_id}")
+def delete_provider(
+    provider_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _tenant = current
+    try:
+        item = store.delete_payment_provider(tenant_id=user.tenant_id, provider_id=provider_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"status": "deleted", "id": item["id"]}
 
 
 def _validate_mpesa_input(phone: str, currency: str) -> None:
@@ -124,6 +181,15 @@ def mpesa_callback(
         idempotent=bool(result["idempotent"]),
         status=result["payment"].status,
     )
+
+
+@router.get("/reconciliation/summary", response_model=PaymentReconciliationSummaryResponse, responses=error_responses(401))
+def reconciliation_summary(
+    contact_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> PaymentReconciliationSummaryResponse:
+    user, _tenant = current
+    return PaymentReconciliationSummaryResponse(**store.payments_reconciliation_summary(tenant_id=user.tenant_id, contact_id=contact_id))
 
 
 @router.get("/reconciliation", response_model=PaymentListResponse, responses=error_responses(401))

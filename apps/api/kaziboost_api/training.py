@@ -7,6 +7,7 @@ from .models import (
     TrainingArticleOut,
     TrainingArticleUpdateRequest,
     TrainingCategoryListResponse,
+    TrainingSearchResponse,
 )
 from .store import Tenant, User, store
 
@@ -80,13 +81,40 @@ def list_articles(
     return TrainingArticleListResponse(total=len(results), items=results)
 
 
-@router.get("/articles/search", response_model=TrainingArticleListResponse)
+@router.get("/articles/search", response_model=TrainingSearchResponse)
 def search_articles(
     q: str = Query(min_length=2),
+    category: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> TrainingSearchResponse:
+    user, _tenant = current
+    items = store.search_training_articles(tenant_id=user.tenant_id, query=q, category=category, limit=limit)
+    results = [
+        TrainingArticleOut(
+            id=item.id,
+            title=item.title,
+            content=item.content,
+            category=item.category,
+            featured=item.featured,
+            views=item.views,
+        )
+        for item in items
+    ]
+    return TrainingSearchResponse(total=len(results), items=results)
+
+
+@router.get("/articles/{article_id}/related", response_model=TrainingArticleListResponse)
+def related_articles(
+    article_id: str,
+    limit: int = Query(default=5, ge=1, le=20),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> TrainingArticleListResponse:
     user, _tenant = current
-    items = store.search_training_articles(tenant_id=user.tenant_id, query=q)
+    try:
+        items = store.related_training_articles(tenant_id=user.tenant_id, article_id=article_id, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     results = [
         TrainingArticleOut(
             id=item.id,
@@ -109,6 +137,26 @@ def get_article(
     user, _tenant = current
     try:
         item = store.get_training_article(tenant_id=user.tenant_id, article_id=article_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return TrainingArticleOut(
+        id=item.id,
+        title=item.title,
+        content=item.content,
+        category=item.category,
+        featured=item.featured,
+        views=item.views,
+    )
+
+
+@router.post("/articles/{article_id}/duplicate", response_model=TrainingArticleOut, status_code=status.HTTP_201_CREATED)
+def duplicate_article(
+    article_id: str,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> TrainingArticleOut:
+    user, _tenant = current
+    try:
+        item = store.duplicate_training_article(tenant_id=user.tenant_id, article_id=article_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return TrainingArticleOut(

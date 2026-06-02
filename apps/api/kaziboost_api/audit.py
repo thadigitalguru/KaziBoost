@@ -11,10 +11,17 @@ router = APIRouter(prefix="/v1/audit", tags=["audit"])
 @router.get("/events", response_model=AuditEventListResponse)
 def list_events(
     limit: int = Query(default=100, ge=1, le=500),
+    event_type: str | None = Query(default=None),
+    entity_type: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> AuditEventListResponse:
     user, _tenant = current
-    events = store.list_audit_events(tenant_id=user.tenant_id, limit=limit)
+    events = store.list_audit_events(
+        tenant_id=user.tenant_id,
+        limit=limit,
+        event_type=event_type,
+        entity_type=entity_type,
+    )
     items = [
         AuditEventOut(
             id=event.id,

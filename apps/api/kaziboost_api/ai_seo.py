@@ -13,8 +13,13 @@ from .models import (
     KeywordItem,
     KeywordSuggestRequest,
     KeywordSuggestResponse,
+    KeywordWorkspaceItem,
+    KeywordWorkspaceListResponse,
     SaveKeywordsRequest,
     SaveKeywordsResponse,
+    WorkspaceRenameRequest,
+    TopicMapGenerateRequest,
+    TopicMapResponse,
 )
 from .store import Tenant, User, store
 
@@ -68,6 +73,15 @@ def generate_content(
     return GenerateContentResponse(**generated)
 
 
+@router.get("/keywords/workspaces", response_model=KeywordWorkspaceListResponse)
+def list_saved_keyword_workspaces(
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> KeywordWorkspaceListResponse:
+    user, _tenant = current
+    items = [KeywordWorkspaceItem(**item) for item in store.list_keyword_workspaces(tenant_id=user.tenant_id)]
+    return KeywordWorkspaceListResponse(total=len(items), items=items)
+
+
 @router.get("/keywords/workspaces/{workspace}", response_model=SaveKeywordsResponse, responses=error_responses(401, 404))
 def get_saved_keywords(
     workspace: str,
@@ -75,6 +89,20 @@ def get_saved_keywords(
 ) -> SaveKeywordsResponse:
     user, _tenant = current
     return SaveKeywordsResponse(**store.get_saved_keywords(tenant_id=user.tenant_id, workspace=workspace))
+
+
+@router.patch("/keywords/workspaces/{workspace}", response_model=SaveKeywordsResponse)
+def rename_saved_keywords(
+    workspace: str,
+    payload: WorkspaceRenameRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> SaveKeywordsResponse:
+    user, _tenant = current
+    return SaveKeywordsResponse(**store.rename_saved_keywords_workspace(
+        tenant_id=user.tenant_id,
+        workspace=workspace,
+        new_workspace=payload.new_workspace,
+    ))
 
 
 @router.delete("/keywords/workspaces/{workspace}")
@@ -85,6 +113,19 @@ def delete_saved_keywords(
     user, _tenant = current
     store.delete_saved_keywords_workspace(tenant_id=user.tenant_id, workspace=workspace)
     return {"workspace": workspace, "status": "deleted"}
+
+
+@router.post("/topic-map/generate", response_model=TopicMapResponse)
+def generate_topic_map(
+    payload: TopicMapGenerateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> TopicMapResponse:
+    _user, _tenant = current
+    return TopicMapResponse(**store.generate_topic_map(
+        seed_keyword=payload.seed_keyword,
+        location=payload.location,
+        language=payload.language,
+    ))
 
 
 @router.get("/content/history", response_model=ContentHistoryResponse, responses=error_responses(401))
@@ -125,6 +166,8 @@ def create_calendar_item(
 def list_calendar_items(
     status: str | None = Query(default=None),
     language: str | None = Query(default=None),
+    on_or_after: str | None = Query(default=None),
+    on_or_before: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> ContentCalendarListResponse:
     user, _tenant = current
@@ -137,7 +180,13 @@ def list_calendar_items(
             language=item.language,
             status=item.status,
         )
-        for item in store.list_content_calendar_items(tenant_id=user.tenant_id, status=status, language=language)
+        for item in store.list_content_calendar_items(
+            tenant_id=user.tenant_id,
+            status=status,
+            language=language,
+            on_or_after=on_or_after,
+            on_or_before=on_or_before,
+        )
     ]
     return ContentCalendarListResponse(total=len(items), items=items)
 

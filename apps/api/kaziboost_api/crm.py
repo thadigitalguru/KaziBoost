@@ -12,6 +12,8 @@ from .models import (
     ContactConsentUpdateRequest,
     ContactExportResponse,
     ContactListResponse,
+    ContactSearchResponse,
+    ContactTagsUpdateRequest,
     ContactNoteCreateRequest,
     ContactNoteListResponse,
     ContactNoteOut,
@@ -21,8 +23,10 @@ from .models import (
     LeadSubmissionOut,
     LeadSubmitRequest,
     SegmentCreateRequest,
+    SegmentDetailResponse,
     SegmentListResponse,
     SegmentOut,
+    SegmentUpdateRequest,
 )
 from .store import Tenant, User, store
 
@@ -84,6 +88,16 @@ def submit_form(
     )
 
 
+@router.get("/contacts/search", response_model=ContactSearchResponse)
+def search_contacts(
+    q: str = Query(min_length=2),
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> ContactSearchResponse:
+    user, _ = current
+    items = [_contact_out(contact) for contact in store.search_contacts(tenant_id=user.tenant_id, query=q)]
+    return ContactSearchResponse(total=len(items), items=items)
+
+
 @router.get("/contacts", response_model=ContactListResponse)
 def list_contacts(
     source: str | None = Query(default=None),
@@ -113,6 +127,16 @@ def export_contacts_csv(
     return Response(content=csv_data, media_type="text/csv")
 
 
+@router.get("/contacts/{contact_id}", response_model=ContactOut)
+def get_contact(contact_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> ContactOut:
+    user, _ = current
+    try:
+        contact = store.get_contact(tenant_id=user.tenant_id, contact_id=contact_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return _contact_out(contact)
+
+
 @router.post("/segments", response_model=SegmentOut, status_code=status.HTTP_201_CREATED)
 def create_segment(
     payload: SegmentCreateRequest,
@@ -133,6 +157,37 @@ def list_segments(current: tuple[User, Tenant] = Depends(get_current_user_and_te
     user, _ = current
     items = [SegmentOut(id=item.id, name=item.name, tag=item.tag, source=item.source) for item in store.list_segments(tenant_id=user.tenant_id)]
     return SegmentListResponse(total=len(items), items=items)
+
+
+@router.get("/segments/{segment_id}", response_model=SegmentDetailResponse)
+def get_segment(segment_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> SegmentDetailResponse:
+    user, _ = current
+    try:
+        segment = store.get_segment(tenant_id=user.tenant_id, segment_id=segment_id)
+        contact_count = store.get_segment_contact_count(tenant_id=user.tenant_id, segment_id=segment_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return SegmentDetailResponse(id=segment.id, name=segment.name, tag=segment.tag, source=segment.source, contact_count=contact_count)
+
+
+@router.patch("/segments/{segment_id}", response_model=SegmentOut)
+def update_segment(
+    segment_id: str,
+    payload: SegmentUpdateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> SegmentOut:
+    user, _ = current
+    try:
+        segment = store.update_segment(
+            tenant_id=user.tenant_id,
+            segment_id=segment_id,
+            name=payload.name,
+            tag=payload.tag,
+            source=payload.source,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return SegmentOut(id=segment.id, name=segment.name, tag=segment.tag, source=segment.source)
 
 
 @router.delete("/segments/{segment_id}")
@@ -193,6 +248,7 @@ def send_campaign(
 @router.get("/campaigns/history", response_model=CampaignHistoryResponse)
 def campaign_history(
     channel: str | None = Query(default=None),
+    subject: str | None = Query(default=None),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> CampaignHistoryResponse:
     user, _ = current
@@ -204,7 +260,7 @@ def campaign_history(
             recipients=item.recipients,
             created_at=item.created_at,
         )
-        for item in store.campaign_history(tenant_id=user.tenant_id, channel=channel)
+        for item in store.campaign_history(tenant_id=user.tenant_id, channel=channel, subject=subject)
     ]
     return CampaignHistoryResponse(total=len(items), items=items)
 
@@ -238,6 +294,25 @@ def list_notes(contact_id: str, current: tuple[User, Tenant] = Depends(get_curre
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     notes = [ContactNoteOut(id=item.id, contact_id=item.contact_id, text=item.text, created_at=item.created_at) for item in items]
     return ContactNoteListResponse(total=len(notes), items=notes)
+
+
+@router.patch("/contacts/{contact_id}/tags")
+def update_tags(
+    contact_id: str,
+    payload: ContactTagsUpdateRequest,
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> dict:
+    user, _ = current
+    try:
+        contact = store.update_contact_tags(
+            tenant_id=user.tenant_id,
+            contact_id=contact_id,
+            tags=payload.tags,
+            actor_user_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"contact_id": contact.id, "tags": contact.tags}
 
 
 @router.patch("/contacts/{contact_id}/consent")

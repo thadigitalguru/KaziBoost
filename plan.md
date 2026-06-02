@@ -28,6 +28,19 @@
 - [x] Current execution set (CRM tag analytics, WhatsApp FAQ listing, reconciliation status filters, SEO calendar deletion, training category filters)
 - [x] New execution set (campaign history channel filters, WhatsApp phone filters, payment failure reason filters, SEO content history language filters, training top-category filters)
 - [x] Continued execution set (CRM consent filters, WhatsApp reminder thread filters, reconciliation tx filters, SEO calendar language filters, analytics schedule frequency filters)
+- [x] New growth foundation set (owner MFA flows, site custom domains, multilingual page variants + language switcher, SEO topic maps, analytics connectors)
+- [x] Ops enablement set (site template catalog, CRM tag management, WhatsApp human replies, payment provider registry, analytics PDF export)
+- [x] Tenant workflow set (site listing, SEO workspace listing, analytics connector status updates, WhatsApp FAQ deletion, onboarding recommendations)
+- [x] Operations control set (audit filters, CRM contact search, payment provider lifecycle controls, report schedule updates)
+- [x] Product management set (site detail + unpublish, CRM segment updates, analytics dashboard summary, training search filters/limits)
+- [x] Admin operations set (site deletion, CRM contact detail, campaign subject filters, SEO calendar date filters, analytics connector deletion)
+- [x] Discoverability set (site page listing, CRM segment detail, payment provider filters, analytics connector filters, training related articles)
+- [x] Workflow enhancement set (site page detail, CRM segment contact counts, reconciliation summary, SEO workspace rename, training article duplication)
+- [x] Web foundation slice (onboarding dashboard shell, website publish flow UI)
+- [x] CRM + WhatsApp build set (CRM lead inbox/detail view, WhatsApp conversation workspace)
+- [x] Analytics build set (analytics overview with scheduled reports)
+- [x] Next build set (training knowledge base shell, payment reconciliation and checkout UI, SEO calendar and content workflow UI)
+- [ ] Upcoming build set (operational settings and tenant controls, dashboard data fetching, onboarding polish)
 
 ---
 
