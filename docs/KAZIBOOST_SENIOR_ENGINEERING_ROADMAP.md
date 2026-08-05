@@ -475,7 +475,7 @@ Deferred larger efforts:
 | 2026-08-05 | Created branch `sol/kaziboost-senior-upgrade-20260805`. | `614ad6b90db49c0aa19ca7db569a7699dba76ee9` | Pushed and upstream set |
 | 2026-08-05 | Read-only audits completed by Repository Intelligence, Product Strategy, Principal AI Engineering, Backend/Data, Frontend/UX, Security/Privacy, Platform/Quality, and Performance/Cost agents. | n/a | n/a |
 | 2026-08-05 | External research completed from sources listed above. | n/a | n/a |
-| pending | Roadmap artifact commit. | pending | pending |
+| 2026-08-05 | Committed Phase 3 roadmap artifact and `.omx/` ignore safety rule. | `72d754a73ce963693eaa15b6067dd59b35d9b7ca` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
 | pending | Improvement 1: Escape tenant-controlled site-rendered HTML. | pending | pending |
 | pending | Improvement 2: Centralized role authorization. | pending | pending |
 | pending | Improvement 3: Production webhook secret fail-closed behavior. | pending | pending |
@@ -493,7 +493,7 @@ Deferred larger efforts:
 - `origin/HEAD` points to `origin/main`.
 - Local `main` and `origin/main` were aligned at `614ad6b90db49c0aa19ca7db569a7699dba76ee9` before branch creation.
 - Dedicated branch `sol/kaziboost-senior-upgrade-20260805` was pushed and tracks `origin/sol/kaziboost-senior-upgrade-20260805`.
-- `gh auth status` still reports an invalid GitHub CLI token for `thadigitalguru`, but Git push succeeded through Git's credential path.
+- `gh auth status` currently reports no logged-in GitHub hosts, but Git push succeeded through Git's credential path.
 - GitHub public API read attempts were rate-limited without a healthy authenticated `gh` token; repository metadata available from prior `gh repo view` showed public repo `thadigitalguru/KaziBoost`, default branch `main`, no description, and last pushed at 2026-06-02T18:40:57Z.
 
 ## 18. Agent Allocation Plan
