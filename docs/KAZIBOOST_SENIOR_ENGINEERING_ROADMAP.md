@@ -167,7 +167,7 @@ Gaps:
 - Do not introduce new dependencies unless the improvement explicitly justifies the tradeoff.
 - Do not perform destructive migrations or irreversible data transforms.
 - Keep changes focused and independently reversible.
-- GitHub CLI auth still reports an invalid token, but Git push to the dedicated branch succeeds.
+- GitHub CLI auth currently reports no logged-in hosts, but Git push to the dedicated branch succeeds.
 
 ## 11. Research Sources
 
@@ -476,7 +476,7 @@ Deferred larger efforts:
 | 2026-08-05 | Read-only audits completed by Repository Intelligence, Product Strategy, Principal AI Engineering, Backend/Data, Frontend/UX, Security/Privacy, Platform/Quality, and Performance/Cost agents. | n/a | n/a |
 | 2026-08-05 | External research completed from sources listed above. | n/a | n/a |
 | 2026-08-05 | Committed Phase 3 roadmap artifact and `.omx/` ignore safety rule. | `72d754a73ce963693eaa15b6067dd59b35d9b7ca` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
-| pending | Improvement 1: Escape tenant-controlled site-rendered HTML. | pending | pending |
+| 2026-08-05 | Improvement 1: Escape tenant-controlled site-rendered HTML; implementation, tests, and reviews passed. | pending | pending commit/push |
 | pending | Improvement 2: Centralized role authorization. | pending | pending |
 | pending | Improvement 3: Production webhook secret fail-closed behavior. | pending | pending |
 | pending | Improvement 4: Privacy redaction during anonymization. | pending | pending |

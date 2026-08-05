@@ -1,3 +1,6 @@
+from html import escape
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse
 
@@ -23,6 +26,24 @@ from .store import Tenant, User, store
 
 
 router = APIRouter(prefix="/v1/sites", tags=["sites"])
+
+
+def _html(value: str) -> str:
+    return escape(value, quote=True)
+
+
+def _path_part(value: str) -> str:
+    return quote(value, safe="")
+
+
+def _page_path(slug: str) -> str:
+    if slug == "home":
+        return "/"
+    return f"/{_path_part(slug)}"
+
+
+def _published_page_href(published_url: str, slug: str, language: str) -> str:
+    return f"{published_url}{_page_path(slug)}?language={_path_part(language)}"
 
 
 @router.get("/templates", response_model=SiteTemplateListResponse)
@@ -249,27 +270,41 @@ def render_page(
     if device != "mobile":
         viewport = '<meta name="viewport" content="width=device-width, initial-scale=1" />'
 
-    hreflang_items = [item for item in store.hreflang_map(tenant_id=user.tenant_id, site_id=site_id) if item["slug"] == slug] if site.published_url else []
-    alternate_links = "".join(
-        f'<link rel="alternate" hreflang="{item["language"]}" href="{item["href"]}" />' for item in hreflang_items
-    )
+    hreflang_items = []
+    if site.published_url:
+        hreflang_items = [
+            item for item in store.hreflang_map(tenant_id=user.tenant_id, site_id=site_id) if item["slug"] == slug
+        ]
+    alternate_links = ""
+    if site.published_url:
+        alternate_links = "".join(
+            (
+                f'<link rel="alternate" hreflang="{_html(item["language"])}" '
+                f'href="{_html(_published_page_href(site.published_url, item["slug"], item["language"]))}" />'
+            )
+            for item in hreflang_items
+        )
     language_switcher = ""
     if len(hreflang_items) > 1:
         links = "".join(
-            f'<a href="/v1/sites/{site_id}/pages/{slug}/render?language={item["language"]}">{item["language"]}</a>' for item in hreflang_items
+            (
+                f'<a href="/v1/sites/{_path_part(site_id)}/pages/{_path_part(slug)}/render'
+                f'?language={_path_part(item["language"])}">{_html(item["language"])}</a>'
+            )
+            for item in hreflang_items
         )
         language_switcher = f'<nav data-language-switcher="true">{links}</nav>'
 
     html = (
         "<!doctype html>"
-        f"<html lang=\"{page.language}\">"
+        f"<html lang=\"{_html(page.language)}\">"
         "<head>"
-        f"<title>{page.title}</title>"
+        f"<title>{_html(page.title)}</title>"
         f"{viewport}"
-        f"<meta name=\"description\" content=\"{site.name} - {page.title}\" />"
+        f"<meta name=\"description\" content=\"{_html(site.name)} - {_html(page.title)}\" />"
         f"{alternate_links}"
         "</head>"
-        f"<body>{language_switcher}<h1>{page.title}</h1><p>Template: {site.template_key}</p></body>"
+        f"<body>{language_switcher}<h1>{_html(page.title)}</h1><p>Template: {_html(site.template_key)}</p></body>"
         "</html>"
     )
     return HTMLResponse(content=html)
