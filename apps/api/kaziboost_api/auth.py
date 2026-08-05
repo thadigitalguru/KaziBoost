@@ -21,6 +21,26 @@ from .store import store
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
+ROLE_OWNER = "owner"
+ROLE_MANAGER = "manager"
+ROLE_MARKETER = "marketer"
+ROLE_SUPPORT = "support"
+
+OWNER_ONLY = (ROLE_OWNER,)
+SITE_CONTENT_ROLES = (ROLE_OWNER, ROLE_MANAGER, ROLE_MARKETER)
+SITE_ADMIN_ROLES = (ROLE_OWNER, ROLE_MANAGER)
+CRM_FORM_SEGMENT_ROLES = (ROLE_OWNER, ROLE_MANAGER, ROLE_MARKETER)
+CRM_SUPPORT_NOTE_ROLES = (ROLE_OWNER, ROLE_MANAGER, ROLE_MARKETER, ROLE_SUPPORT)
+CRM_CONSENT_ROLES = (ROLE_OWNER, ROLE_MANAGER, ROLE_SUPPORT)
+CRM_CAMPAIGN_ROLES = (ROLE_OWNER, ROLE_MANAGER, ROLE_MARKETER)
+CRM_PRIVACY_EXPORT_ROLES = (ROLE_OWNER, ROLE_MANAGER)
+PAYMENT_CHECKOUT_ROLES = (ROLE_OWNER, ROLE_MANAGER, ROLE_SUPPORT)
+PAYMENT_PROVIDER_SETUP_ROLES = OWNER_ONLY
+PAYMENT_REFUND_ROLES = (ROLE_OWNER, ROLE_MANAGER)
+PAYMENT_REPORT_ROLES = (ROLE_OWNER, ROLE_MANAGER)
+WHATSAPP_FAQ_CONTENT_ROLES = (ROLE_OWNER, ROLE_MANAGER, ROLE_MARKETER)
+WHATSAPP_SERVICE_ACTION_ROLES = (ROLE_OWNER, ROLE_MANAGER, ROLE_SUPPORT)
+
 
 def _user_out(user) -> UserOut:
     return UserOut(
@@ -89,14 +109,24 @@ def get_current_user_and_tenant(token: str = Depends(_require_bearer_token)) -> 
     return resolved
 
 
+def require_roles(*allowed_roles: str):
+    allowed = frozenset(allowed_roles)
+
+    def _dependency(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> tuple[User, Tenant]:
+        user, _tenant = current
+        if user.role not in allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient role")
+        return current
+
+    return _dependency
+
+
 @router.post("/teammates", response_model=SignUpResponse, status_code=status.HTTP_201_CREATED)
 def create_teammate(
     payload: CreateTeammateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*OWNER_ONLY)),
 ) -> SignUpResponse:
     requester, tenant = current
-    if requester.role != "owner":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can create teammates")
     try:
         user = store.create_teammate(
             tenant_id=tenant.id,
@@ -118,11 +148,9 @@ def create_teammate(
 def update_role(
     user_id: str,
     payload: UpdateRoleRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*OWNER_ONLY)),
 ) -> SignUpResponse:
     requester, tenant = current
-    if requester.role != "owner":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can update roles")
     try:
         user = store.update_user_role(
             tenant_id=tenant.id,
@@ -139,10 +167,8 @@ def update_role(
 
 
 @router.post("/mfa/enroll", response_model=MFAEnrollResponse, status_code=status.HTTP_201_CREATED)
-def enroll_mfa(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> MFAEnrollResponse:
+def enroll_mfa(current: tuple[User, Tenant] = Depends(require_roles(*OWNER_ONLY))) -> MFAEnrollResponse:
     user, _tenant = current
-    if user.role != "owner":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can enroll MFA")
     payload = store.enroll_mfa(user_id=user.id)
     return MFAEnrollResponse(**payload)
 

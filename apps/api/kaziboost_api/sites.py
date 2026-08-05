@@ -4,7 +4,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse
 
-from .auth import get_current_user_and_tenant
+from .auth import SITE_ADMIN_ROLES, SITE_CONTENT_ROLES, get_current_user_and_tenant, require_roles
 from .models import (
     HreflangItem,
     HreflangMapResponse,
@@ -96,7 +96,10 @@ def get_site(site_id: str, current: tuple[User, Tenant] = Depends(get_current_us
 
 
 @router.post("", response_model=SiteOut, status_code=status.HTTP_201_CREATED)
-def create_site(payload: SiteCreateRequest, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> SiteOut:
+def create_site(
+    payload: SiteCreateRequest,
+    current: tuple[User, Tenant] = Depends(require_roles(*SITE_CONTENT_ROLES)),
+) -> SiteOut:
     user, _ = current
     site = store.create_site(
         tenant_id=user.tenant_id,
@@ -140,7 +143,7 @@ def get_page(
 def add_page(
     site_id: str,
     payload: PageCreateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*SITE_CONTENT_ROLES)),
 ) -> PageOut:
     user, _ = current
     try:
@@ -161,7 +164,7 @@ def add_page(
 def attach_domain(
     site_id: str,
     payload: SiteDomainRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*SITE_ADMIN_ROLES)),
 ) -> SiteDomainResponse:
     user, _ = current
     try:
@@ -172,7 +175,10 @@ def attach_domain(
 
 
 @router.post("/{site_id}/publish", response_model=PublishResponse)
-def publish_site(site_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> PublishResponse:
+def publish_site(
+    site_id: str,
+    current: tuple[User, Tenant] = Depends(require_roles(*SITE_CONTENT_ROLES)),
+) -> PublishResponse:
     user, _ = current
     try:
         site = store.publish_site(tenant_id=user.tenant_id, site_id=site_id)
@@ -192,7 +198,10 @@ def publish_site(site_id: str, current: tuple[User, Tenant] = Depends(get_curren
 
 
 @router.post("/{site_id}/unpublish", response_model=SiteStatusResponse)
-def unpublish_site(site_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> SiteStatusResponse:
+def unpublish_site(
+    site_id: str,
+    current: tuple[User, Tenant] = Depends(require_roles(*SITE_CONTENT_ROLES)),
+) -> SiteStatusResponse:
     user, _ = current
     try:
         site = store.unpublish_site(tenant_id=user.tenant_id, site_id=site_id)
@@ -202,7 +211,10 @@ def unpublish_site(site_id: str, current: tuple[User, Tenant] = Depends(get_curr
 
 
 @router.delete("/{site_id}")
-def delete_site(site_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
+def delete_site(
+    site_id: str,
+    current: tuple[User, Tenant] = Depends(require_roles(*SITE_ADMIN_ROLES)),
+) -> dict:
     user, _ = current
     try:
         store.delete_site(tenant_id=user.tenant_id, site_id=site_id)

@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
-from .auth import get_current_user_and_tenant
+from .auth import (
+    WHATSAPP_FAQ_CONTENT_ROLES,
+    WHATSAPP_SERVICE_ACTION_ROLES,
+    get_current_user_and_tenant,
+    require_roles,
+)
 from .models import (
     WhatsAppBotReplyResponse,
     WhatsAppConversationListResponse,
@@ -112,7 +117,7 @@ def list_conversations(
 @router.post("/faq", status_code=status.HTTP_201_CREATED)
 def add_faq(
     payload: WhatsAppFAQCreateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_FAQ_CONTENT_ROLES)),
 ) -> dict:
     user, _tenant = current
     return store.add_whatsapp_faq(tenant_id=user.tenant_id, question=payload.question, answer=payload.answer)
@@ -128,7 +133,7 @@ def list_faq(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)
 @router.delete("/faq/{faq_index}")
 def delete_faq(
     faq_index: int,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_FAQ_CONTENT_ROLES)),
 ) -> dict:
     user, _tenant = current
     try:
@@ -141,7 +146,7 @@ def delete_faq(
 @router.post("/conversations/{thread_id}/reply-bot", response_model=WhatsAppBotReplyResponse)
 def bot_reply(
     thread_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppBotReplyResponse:
     user, _tenant = current
     reply = store.whatsapp_bot_reply(tenant_id=user.tenant_id, thread_id=thread_id)
@@ -152,7 +157,7 @@ def bot_reply(
 def human_reply(
     thread_id: str,
     payload: WhatsAppHumanReplyRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppHumanReplyResponse:
     user, _tenant = current
     try:
@@ -171,7 +176,7 @@ def human_reply(
 def handoff(
     thread_id: str,
     payload: WhatsAppHandoffRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppConversationOut:
     user, _tenant = current
     conversation = store.whatsapp_handoff(tenant_id=user.tenant_id, thread_id=thread_id, assigned_to=payload.assigned_to)
@@ -189,7 +194,7 @@ def handoff(
 def assign_conversation(
     thread_id: str,
     payload: WhatsAppHandoffRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppConversationOut:
     user, _tenant = current
     try:
@@ -209,7 +214,7 @@ def assign_conversation(
 @router.post("/conversations/{thread_id}/close", response_model=WhatsAppConversationOut)
 def close_conversation(
     thread_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppConversationOut:
     user, _tenant = current
     try:
@@ -229,7 +234,7 @@ def close_conversation(
 @router.post("/conversations/{thread_id}/reopen", response_model=WhatsAppConversationOut)
 def reopen_conversation(
     thread_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppConversationOut:
     user, _tenant = current
     try:
@@ -250,7 +255,7 @@ def reopen_conversation(
 def schedule_reminder(
     thread_id: str,
     payload: WhatsAppReminderRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppReminderOut:
     user, _tenant = current
     try:
@@ -289,7 +294,7 @@ def reminder_history(
 @router.patch("/reminders/{reminder_id}/sent", response_model=WhatsAppReminderOut)
 def mark_reminder_sent(
     reminder_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppReminderOut:
     user, _tenant = current
     try:
