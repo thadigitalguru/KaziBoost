@@ -476,7 +476,7 @@ Deferred larger efforts:
 | 2026-08-05 | Read-only audits completed by Repository Intelligence, Product Strategy, Principal AI Engineering, Backend/Data, Frontend/UX, Security/Privacy, Platform/Quality, and Performance/Cost agents. | n/a | n/a |
 | 2026-08-05 | External research completed from sources listed above. | n/a | n/a |
 | 2026-08-05 | Committed Phase 3 roadmap artifact and `.omx/` ignore safety rule. | `72d754a73ce963693eaa15b6067dd59b35d9b7ca` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
-| 2026-08-05 | Improvement 1: Escape tenant-controlled site-rendered HTML; implementation, tests, and reviews passed. | pending | pending commit/push |
+| 2026-08-05 | Improvement 1: Escape tenant-controlled site-rendered HTML; implementation, tests, and reviews passed. | `06c4041e466debfcf42dafa9a46d1ee2b6011961` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
 | pending | Improvement 2: Centralized role authorization. | pending | pending |
 | pending | Improvement 3: Production webhook secret fail-closed behavior. | pending | pending |
 | pending | Improvement 4: Privacy redaction during anonymization. | pending | pending |
