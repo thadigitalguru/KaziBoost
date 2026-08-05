@@ -9,3 +9,4 @@ __pycache__/
 data/*.db
 apps/web/node_modules/
 apps/web/.next/
+.omx/
