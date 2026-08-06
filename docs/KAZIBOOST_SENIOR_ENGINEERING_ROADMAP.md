@@ -327,16 +327,16 @@ Assigned reviewers: Security and Privacy Agent, Quality Engineering Agent, Indep
 
 Current problem: Many list/export paths return all tenant records or scan unbounded collections.
 Evidence: performance audit cited contacts, WhatsApp conversations/reminders, payments, training, and analytics scans.
-Proposed solution: Add consistent `limit`/`offset` or capped `limit` query parameters to high-volume list routes while preserving defaults.
+Proposed solution: Add consistent `limit`/`offset` query parameters with a secure default of 50, maximum of 100, and offset ceiling of 10,000 to high-volume list routes.
 Better than alternatives: Reduces immediate performance risk without a database migration.
 Scope: CRM, WhatsApp, payments, training, SEO calendar, and related tests.
 Dependencies: role/privacy work should precede broad list changes.
-Risks: API response totals and ordering must remain stable; clients may rely on all records by default.
-Migration: document default/max limits.
-Acceptance criteria: affected routes enforce a documented default and maximum limit; existing small-data tests pass.
-Tests: pagination contract tests for each touched route, full pytest.
+Risks: API response totals and ordering must remain stable; callers that need complete datasets should use the existing export workflows.
+Migration: list endpoints now intentionally cap responses at 50 by default (100 maximum); clients should follow `total`, `limit`, and `offset` metadata for subsequent pages.
+Acceptance criteria: affected routes enforce a documented default and maximum limit; existing small-data tests pass; export workflows remain unchanged.
+Tests: pagination contract tests for each touched route, default-cap and segment metadata regressions, full pytest.
 Observability: later metrics can track capped responses.
-Rollback: revert one commit; unbounded responses return.
+Rollback: revert one commit; prior unbounded list behavior returns.
 Estimated complexity: medium.
 Assigned builder agent: Performance and Cost Agent.
 Assigned reviewers: Backend and Data Agent, Quality Engineering Agent, Independent Senior Reviewer.
@@ -477,10 +477,10 @@ Deferred larger efforts:
 | 2026-08-05 | External research completed from sources listed above. | n/a | n/a |
 | 2026-08-05 | Committed Phase 3 roadmap artifact and `.omx/` ignore safety rule. | `72d754a73ce963693eaa15b6067dd59b35d9b7ca` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
 | 2026-08-05 | Improvement 1: Escape tenant-controlled site-rendered HTML; implementation, tests, and reviews passed. | `06c4041e466debfcf42dafa9a46d1ee2b6011961` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
-| pending | Improvement 2: Centralized role authorization. | pending | pending |
-| pending | Improvement 3: Production webhook secret fail-closed behavior. | pending | pending |
-| pending | Improvement 4: Privacy redaction during anonymization. | pending | pending |
-| pending | Improvement 5: Pagination and list limits. | pending | pending |
+| 2026-08-05 | Improvement 2: Centralized role authorization; implementation, tests, and reviews passed. | `2d39d141addea3963914b380802a69044951d84f` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
+| 2026-08-06 | Improvement 3: Production webhook secret fail-closed behavior; implementation, tests, and reviews passed. | `5cb3c3fbff22668e4cea2045885f7eef236f6e6d` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
+| 2026-08-06 | Improvement 4: Privacy redaction during anonymization; implementation, tests, and reviews passed. | `0e7d71cf4619496807d7f5928bcb422b646a4ad1` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
+| 2026-08-06 | Improvement 5: Pagination and list limits implemented; validation and reviews passed. | `9f8efde45905e3363e23dbba1ac70379134f20b8` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
 | pending | Improvement 6: SEO indexes and readiness checks. | pending | pending |
 | pending | Improvement 7: AI governance metadata and audit events. | pending | pending |
 | pending | Improvement 8: Generated-content review workflow. | pending | pending |

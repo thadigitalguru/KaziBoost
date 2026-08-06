@@ -125,3 +125,73 @@ def test_contact_timeline_contains_form_submission_interaction():
     assert len(events) >= 1
     assert events[0]["type"] == "form_submission"
     assert events[0]["source"] == "web_form"
+
+
+def test_contacts_are_paginated_with_bounded_results_and_total_count():
+    headers = _auth_headers("crmpagination@example.com", "Pagination Shop")
+
+    form = client.post(
+        "/v1/crm/forms",
+        headers=headers,
+        json={"name": "Lead Form", "kind": "lead", "fields": ["name", "email"]},
+    ).json()
+    for index in range(3):
+        response = client.post(
+            f"/v1/crm/forms/{form['id']}/submit",
+            headers=headers,
+            json={
+                "name": f"Lead {index}",
+                "phone": f"+25470000010{index}",
+                "email": f"lead{index}@example.com",
+                "message": "Interested",
+                "source": "web_form",
+            },
+        )
+        assert response.status_code == 201
+
+    page = client.get("/v1/crm/contacts?limit=2&offset=1", headers=headers)
+
+    assert page.status_code == 200
+    body = page.json()
+    assert body["total"] == 3
+    assert body["limit"] == 2
+    assert body["offset"] == 1
+    assert [item["email"] for item in body["items"]] == ["lead1@example.com", "lead2@example.com"]
+
+
+def test_contacts_default_limit_bounds_large_lists():
+    headers = _auth_headers("crmpaginationdefault@example.com", "Pagination Default Shop")
+
+    form = client.post(
+        "/v1/crm/forms",
+        headers=headers,
+        json={"name": "Lead Form", "kind": "lead", "fields": ["name", "email"]},
+    ).json()
+    for index in range(51):
+        response = client.post(
+            f"/v1/crm/forms/{form['id']}/submit",
+            headers=headers,
+            json={
+                "name": f"Lead {index}",
+                "phone": f"+254700001{index:02d}",
+                "email": f"full-list-{index}@example.com",
+                "message": "Interested",
+                "source": "web_form",
+            },
+        )
+        assert response.status_code == 201
+
+    body = client.get("/v1/crm/contacts", headers=headers).json()
+
+    assert body["total"] == 51
+    assert len(body["items"]) == 50
+    assert body["limit"] == 50
+    assert body["offset"] == 0
+
+
+def test_contact_pagination_rejects_invalid_bounds():
+    headers = _auth_headers("crmpaginationbounds@example.com", "Pagination Bounds Shop")
+
+    assert client.get("/v1/crm/contacts?limit=0", headers=headers).status_code == 422
+    assert client.get("/v1/crm/contacts?limit=101", headers=headers).status_code == 422
+    assert client.get("/v1/crm/contacts?offset=-1", headers=headers).status_code == 422

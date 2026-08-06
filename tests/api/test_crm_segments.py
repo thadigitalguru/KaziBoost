@@ -67,4 +67,6 @@ def test_create_segment_and_resolve_matching_contacts():
     resolved = client.get(f"/v1/crm/segments/{segment_id}/contacts", headers=headers)
     assert resolved.status_code == 200
     assert resolved.json()["total"] == 1
+    assert resolved.json()["limit"] == 50
+    assert resolved.json()["offset"] == 0
     assert resolved.json()["items"][0]["email"] == "vip1@example.com"

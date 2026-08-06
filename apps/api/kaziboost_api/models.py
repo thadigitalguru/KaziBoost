@@ -236,6 +236,8 @@ class ContactTimelineEvent(BaseModel):
 class ContactListResponse(BaseModel):
     total: int
     items: list[ContactOut]
+    limit: int | None = None
+    offset: int = 0
 
 
 class ContactSearchResponse(BaseModel):
@@ -441,6 +443,8 @@ class ContentCalendarItemOut(BaseModel):
 class ContentCalendarListResponse(BaseModel):
     total: int
     items: list[ContentCalendarItemOut]
+    limit: int | None = None
+    offset: int = 0
 
 
 class ContentCalendarStatusUpdateRequest(BaseModel):
@@ -465,6 +469,8 @@ class WhatsAppConversationOut(BaseModel):
 class WhatsAppConversationListResponse(BaseModel):
     total: int
     items: list[WhatsAppConversationOut]
+    limit: int | None = None
+    offset: int = 0
 
 
 class WhatsAppReminderRequest(BaseModel):
@@ -482,6 +488,8 @@ class WhatsAppReminderOut(BaseModel):
 class WhatsAppReminderListResponse(BaseModel):
     total: int
     items: list[WhatsAppReminderOut]
+    limit: int | None = None
+    offset: int = 0
 
 
 class WhatsAppFAQCreateRequest(BaseModel):
@@ -611,6 +619,8 @@ class MpesaCallbackResponse(BaseModel):
 class PaymentListResponse(BaseModel):
     total: int
     items: list[PaymentOut]
+    limit: int | None = None
+    offset: int = 0
 
 
 class PaymentReconciliationSummaryResponse(BaseModel):
@@ -636,6 +646,8 @@ class RefundOut(BaseModel):
 class RefundListResponse(BaseModel):
     total: int
     items: list[RefundOut]
+    limit: int | None = None
+    offset: int = 0
 
 
 class PaymentsSummaryResponse(BaseModel):
@@ -664,6 +676,8 @@ class PaymentFailureItem(BaseModel):
 class PaymentFailureListResponse(BaseModel):
     total: int
     items: list[PaymentFailureItem]
+    limit: int | None = None
+    offset: int = 0
 
 
 class PaymentProviderRequest(BaseModel):
@@ -732,11 +746,15 @@ class TrainingArticleOut(BaseModel):
 class TrainingArticleListResponse(BaseModel):
     total: int
     items: list[TrainingArticleOut]
+    limit: int | None = None
+    offset: int = 0
 
 
 class TrainingSearchResponse(BaseModel):
     total: int
     items: list[TrainingArticleOut]
+    limit: int | None = None
+    offset: int = 0
 
 
 class TrainingArticleUpdateRequest(BaseModel):

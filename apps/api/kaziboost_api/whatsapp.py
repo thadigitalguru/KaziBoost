@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
-from .auth import get_current_user_and_tenant
+from .auth import (
+    WHATSAPP_FAQ_CONTENT_ROLES,
+    WHATSAPP_SERVICE_ACTION_ROLES,
+    get_current_user_and_tenant,
+    require_roles,
+)
 from .models import (
     WhatsAppBotReplyResponse,
     WhatsAppConversationListResponse,
@@ -15,6 +20,7 @@ from .models import (
     WhatsAppReminderRequest,
 )
 from .store import Tenant, User, store
+from .webhook_secrets import WebhookSecretConfigurationError
 from .whatsapp_security import verify_whatsapp_signature
 
 
@@ -25,6 +31,7 @@ router = APIRouter(prefix="/v1/whatsapp", tags=["whatsapp"])
     "/webhook/incoming",
     response_model=WhatsAppConversationOut,
     status_code=status.HTTP_201_CREATED,
+    responses={503: {"description": "Webhook verification is temporarily unavailable"}},
     openapi_extra={
         "requestBody": {
             "content": {
@@ -51,13 +58,21 @@ def incoming_webhook(
     x_webhook_signature: str = Header(alias="x-webhook-signature"),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppConversationOut:
-    if not verify_whatsapp_signature(
-        signature=x_webhook_signature,
-        event_id=x_event_id,
-        from_phone=payload.from_phone,
-        message_text=payload.message_text,
-        language=payload.language,
-    ):
+    try:
+        signature_valid = verify_whatsapp_signature(
+            signature=x_webhook_signature,
+            event_id=x_event_id,
+            from_phone=payload.from_phone,
+            message_text=payload.message_text,
+            language=payload.language,
+        )
+    except WebhookSecretConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Webhook verification is temporarily unavailable",
+        ) from exc
+
+    if not signature_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature")
 
     user, _tenant = current
@@ -86,6 +101,8 @@ def list_conversations(
     status: str | None = Query(default=None),
     assigned_to: str | None = Query(default=None),
     from_phone: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppConversationListResponse:
     user, _tenant = current
@@ -106,13 +123,14 @@ def list_conversations(
         )
         for item in conversations
     ]
-    return WhatsAppConversationListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return WhatsAppConversationListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.post("/faq", status_code=status.HTTP_201_CREATED)
 def add_faq(
     payload: WhatsAppFAQCreateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_FAQ_CONTENT_ROLES)),
 ) -> dict:
     user, _tenant = current
     return store.add_whatsapp_faq(tenant_id=user.tenant_id, question=payload.question, answer=payload.answer)
@@ -128,7 +146,7 @@ def list_faq(current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)
 @router.delete("/faq/{faq_index}")
 def delete_faq(
     faq_index: int,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_FAQ_CONTENT_ROLES)),
 ) -> dict:
     user, _tenant = current
     try:
@@ -141,7 +159,7 @@ def delete_faq(
 @router.post("/conversations/{thread_id}/reply-bot", response_model=WhatsAppBotReplyResponse)
 def bot_reply(
     thread_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppBotReplyResponse:
     user, _tenant = current
     reply = store.whatsapp_bot_reply(tenant_id=user.tenant_id, thread_id=thread_id)
@@ -152,7 +170,7 @@ def bot_reply(
 def human_reply(
     thread_id: str,
     payload: WhatsAppHumanReplyRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppHumanReplyResponse:
     user, _tenant = current
     try:
@@ -171,7 +189,7 @@ def human_reply(
 def handoff(
     thread_id: str,
     payload: WhatsAppHandoffRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppConversationOut:
     user, _tenant = current
     conversation = store.whatsapp_handoff(tenant_id=user.tenant_id, thread_id=thread_id, assigned_to=payload.assigned_to)
@@ -189,7 +207,7 @@ def handoff(
 def assign_conversation(
     thread_id: str,
     payload: WhatsAppHandoffRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppConversationOut:
     user, _tenant = current
     try:
@@ -209,7 +227,7 @@ def assign_conversation(
 @router.post("/conversations/{thread_id}/close", response_model=WhatsAppConversationOut)
 def close_conversation(
     thread_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppConversationOut:
     user, _tenant = current
     try:
@@ -229,7 +247,7 @@ def close_conversation(
 @router.post("/conversations/{thread_id}/reopen", response_model=WhatsAppConversationOut)
 def reopen_conversation(
     thread_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppConversationOut:
     user, _tenant = current
     try:
@@ -250,7 +268,7 @@ def reopen_conversation(
 def schedule_reminder(
     thread_id: str,
     payload: WhatsAppReminderRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppReminderOut:
     user, _tenant = current
     try:
@@ -270,6 +288,8 @@ def schedule_reminder(
 def reminder_history(
     status: str | None = Query(default=None),
     thread_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppReminderListResponse:
     user, _tenant = current
@@ -283,13 +303,14 @@ def reminder_history(
         )
         for item in store.list_whatsapp_reminders(tenant_id=user.tenant_id, status=status, thread_id=thread_id)
     ]
-    return WhatsAppReminderListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return WhatsAppReminderListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.patch("/reminders/{reminder_id}/sent", response_model=WhatsAppReminderOut)
 def mark_reminder_sent(
     reminder_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppReminderOut:
     user, _tenant = current
     try:
@@ -307,6 +328,8 @@ def mark_reminder_sent(
 
 @router.get("/queue/overdue", response_model=WhatsAppConversationListResponse)
 def overdue_queue(
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppConversationListResponse:
     user, _tenant = current
@@ -321,7 +344,8 @@ def overdue_queue(
         )
         for item in store.overdue_whatsapp_queue(tenant_id=user.tenant_id)
     ]
-    return WhatsAppConversationListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return WhatsAppConversationListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.get("/stats/sla")

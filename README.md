@@ -30,6 +30,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
 pytest
+export KAZIBOOST_ENV=local
 uvicorn kaziboost_api.main:app --reload
 
 # Frontend

@@ -1,6 +1,13 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
-from .auth import get_current_user_and_tenant
+from .auth import (
+    PAYMENT_CHECKOUT_ROLES,
+    PAYMENT_PROVIDER_SETUP_ROLES,
+    PAYMENT_REFUND_ROLES,
+    PAYMENT_REPORT_ROLES,
+    get_current_user_and_tenant,
+    require_roles,
+)
 from .contracts import error_responses
 from .models import (
     MpesaCallbackRequest,
@@ -24,6 +31,7 @@ from .models import (
 )
 from .store import Tenant, User, store
 from .payments_security import verify_mpesa_callback_signature
+from .webhook_secrets import WebhookSecretConfigurationError
 
 
 router = APIRouter(prefix="/v1/payments", tags=["payments"])
@@ -32,7 +40,7 @@ router = APIRouter(prefix="/v1/payments", tags=["payments"])
 @router.post("/providers", status_code=status.HTTP_201_CREATED, response_model=PaymentProviderResponse)
 def create_provider(
     payload: PaymentProviderRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_PROVIDER_SETUP_ROLES)),
 ) -> PaymentProviderResponse:
     user, _tenant = current
     item = store.create_payment_provider(
@@ -58,7 +66,7 @@ def list_providers(
 def update_provider(
     provider_id: str,
     payload: PaymentProviderUpdateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_PROVIDER_SETUP_ROLES)),
 ) -> PaymentProviderResponse:
     user, _tenant = current
     try:
@@ -71,7 +79,7 @@ def update_provider(
 @router.delete("/providers/{provider_id}")
 def delete_provider(
     provider_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_PROVIDER_SETUP_ROLES)),
 ) -> dict:
     user, _tenant = current
     try:
@@ -130,7 +138,7 @@ def _payment_out(payment) -> PaymentOut:
 )
 def initiate_mpesa(
     payload: MpesaInitiateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_CHECKOUT_ROLES)),
 ) -> PaymentOut:
     user, _tenant = current
     _validate_mpesa_input(phone=payload.phone, currency=payload.currency)
@@ -145,7 +153,7 @@ def initiate_mpesa(
     return _payment_out(payment)
 
 
-@router.post("/mpesa/callback", response_model=MpesaCallbackResponse, responses=error_responses(400, 401, 404))
+@router.post("/mpesa/callback", response_model=MpesaCallbackResponse, responses=error_responses(400, 401, 404, 503))
 def mpesa_callback(
     payload: MpesaCallbackRequest,
     x_callback_signature: str = Header(alias="x-callback-signature"),
@@ -154,12 +162,20 @@ def mpesa_callback(
     user, _tenant = current
     if payload.status not in {"success", "failed", "pending"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment callback status")
-    if not verify_mpesa_callback_signature(
-        signature=x_callback_signature,
-        payment_id=payload.payment_id,
-        provider_tx_id=payload.provider_tx_id,
-        status=payload.status,
-    ):
+    try:
+        signature_valid = verify_mpesa_callback_signature(
+            signature=x_callback_signature,
+            payment_id=payload.payment_id,
+            provider_tx_id=payload.provider_tx_id,
+            status=payload.status,
+        )
+    except WebhookSecretConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Webhook verification is temporarily unavailable",
+        ) from exc
+
+    if not signature_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid callback signature")
 
     try:
@@ -186,7 +202,7 @@ def mpesa_callback(
 @router.get("/reconciliation/summary", response_model=PaymentReconciliationSummaryResponse, responses=error_responses(401))
 def reconciliation_summary(
     contact_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_REPORT_ROLES)),
 ) -> PaymentReconciliationSummaryResponse:
     user, _tenant = current
     return PaymentReconciliationSummaryResponse(**store.payments_reconciliation_summary(tenant_id=user.tenant_id, contact_id=contact_id))
@@ -197,7 +213,9 @@ def reconciliation(
     contact_id: str,
     status: str | None = Query(default=None),
     provider_tx_id: str | None = Query(default=None),
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_REPORT_ROLES)),
 ) -> PaymentListResponse:
     user, _tenant = current
     items = store.list_payments_by_contact(
@@ -206,14 +224,15 @@ def reconciliation(
         status=status,
         provider_tx_id=provider_tx_id,
     )
-    return PaymentListResponse(total=len(items), items=[_payment_out(item) for item in items])
+    page = items[offset : offset + limit]
+    return PaymentListResponse(total=len(items), items=[_payment_out(item) for item in page], limit=limit, offset=offset)
 
 
 @router.post("/{payment_id}/refund", response_model=RefundOut, status_code=status.HTTP_201_CREATED)
 def create_refund(
     payment_id: str,
     payload: RefundRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_REFUND_ROLES)),
 ) -> RefundOut:
     user, _tenant = current
     try:
@@ -238,6 +257,8 @@ def create_refund(
 @router.get("/{payment_id}/refunds", response_model=RefundListResponse)
 def list_refunds(
     payment_id: str,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> RefundListResponse:
     user, _tenant = current
@@ -256,7 +277,8 @@ def list_refunds(
         )
         for refund in refunds
     ]
-    return RefundListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return RefundListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.get("/summary", response_model=PaymentsSummaryResponse)
@@ -269,7 +291,7 @@ def payments_summary(
 
 @router.get("/export.csv")
 def export_csv(
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_REPORT_ROLES)),
 ) -> Response:
     user, _tenant = current
     payload = store.export_payments_csv(tenant_id=user.tenant_id)
@@ -279,7 +301,9 @@ def export_csv(
 @router.get("/failures", response_model=PaymentFailureListResponse)
 def failures(
     reason: str | None = Query(default=None),
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_REPORT_ROLES)),
 ) -> PaymentFailureListResponse:
     user, _tenant = current
     items = [
@@ -291,12 +315,13 @@ def failures(
         )
         for item in store.failed_payments(tenant_id=user.tenant_id, reason=reason)
     ]
-    return PaymentFailureListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return PaymentFailureListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.get("/reports/monthly", response_model=PaymentsMonthlyReportResponse)
 def monthly_report(
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_REPORT_ROLES)),
 ) -> PaymentsMonthlyReportResponse:
     user, _tenant = current
     return PaymentsMonthlyReportResponse(**store.payments_monthly_report(tenant_id=user.tenant_id))
@@ -304,7 +329,7 @@ def monthly_report(
 
 @router.get("/refunds/report", response_model=RefundReportResponse)
 def refund_report(
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_REPORT_ROLES)),
 ) -> RefundReportResponse:
     user, _tenant = current
     return RefundReportResponse(**store.refunds_report(tenant_id=user.tenant_id))

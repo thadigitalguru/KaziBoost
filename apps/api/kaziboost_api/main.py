@@ -16,6 +16,7 @@ from .sites import router as sites_router
 from .training import router as training_router
 from .whatsapp import router as whatsapp_router
 from .store import store
+from .webhook_secrets import webhook_secret_checks, webhook_secrets_ready
 
 app = FastAPI(title="KaziBoost API", version="0.1.0")
 app.include_router(auth_router)
@@ -56,7 +57,9 @@ def health() -> HealthResponse:
 
 @app.get("/ready", response_model=ReadinessResponse)
 def ready() -> ReadinessResponse:
-    return ReadinessResponse(status="ready", checks={"api": "ok", "storage": "ok"})
+    checks = {"api": "ok", "storage": "ok", **webhook_secret_checks()}
+    ready_status = "ready" if webhook_secrets_ready() else "not_ready"
+    return ReadinessResponse(status=ready_status, checks=checks)
 
 
 @app.get("/metrics")

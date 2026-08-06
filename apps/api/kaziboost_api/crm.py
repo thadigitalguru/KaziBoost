@@ -1,6 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from .auth import get_current_user_and_tenant
+from .auth import (
+    CRM_CAMPAIGN_ROLES,
+    CRM_CONSENT_ROLES,
+    CRM_FORM_SEGMENT_ROLES,
+    CRM_PRIVACY_EXPORT_ROLES,
+    CRM_SUPPORT_NOTE_ROLES,
+    get_current_user_and_tenant,
+    require_roles,
+)
 from .models import (
     CRMFormCreateRequest,
     CRMFormOut,
@@ -47,7 +55,10 @@ def _contact_out(contact) -> ContactOut:
 
 
 @router.post("/forms", response_model=CRMFormOut, status_code=status.HTTP_201_CREATED)
-def create_form(payload: CRMFormCreateRequest, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> CRMFormOut:
+def create_form(
+    payload: CRMFormCreateRequest,
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_FORM_SEGMENT_ROLES)),
+) -> CRMFormOut:
     user, _ = current
     form = store.create_crm_form(
         tenant_id=user.tenant_id,
@@ -103,6 +114,8 @@ def list_contacts(
     source: str | None = Query(default=None),
     tag: str | None = Query(default=None),
     email_marketing: bool | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> ContactListResponse:
     user, _ = current
@@ -112,15 +125,16 @@ def list_contacts(
         tag=tag,
         email_marketing=email_marketing,
     )
-    response_items = [_contact_out(contact) for contact in items]
-    return ContactListResponse(total=len(response_items), items=response_items)
+    page = items[offset : offset + limit]
+    response_items = [_contact_out(contact) for contact in page]
+    return ContactListResponse(total=len(items), items=response_items, limit=limit, offset=offset)
 
 
 @router.get("/contacts/export.csv")
 def export_contacts_csv(
     source: str | None = Query(default=None),
     tag: str | None = Query(default=None),
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_PRIVACY_EXPORT_ROLES)),
 ) -> Response:
     user, _ = current
     csv_data = store.export_contacts_csv(tenant_id=user.tenant_id, source=source, tag=tag)
@@ -140,7 +154,7 @@ def get_contact(contact_id: str, current: tuple[User, Tenant] = Depends(get_curr
 @router.post("/segments", response_model=SegmentOut, status_code=status.HTTP_201_CREATED)
 def create_segment(
     payload: SegmentCreateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_FORM_SEGMENT_ROLES)),
 ) -> SegmentOut:
     user, _ = current
     segment = store.create_segment(
@@ -174,7 +188,7 @@ def get_segment(segment_id: str, current: tuple[User, Tenant] = Depends(get_curr
 def update_segment(
     segment_id: str,
     payload: SegmentUpdateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_FORM_SEGMENT_ROLES)),
 ) -> SegmentOut:
     user, _ = current
     try:
@@ -191,7 +205,10 @@ def update_segment(
 
 
 @router.delete("/segments/{segment_id}")
-def delete_segment(segment_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
+def delete_segment(
+    segment_id: str,
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_FORM_SEGMENT_ROLES)),
+) -> dict:
     user, _ = current
     try:
         store.delete_segment(tenant_id=user.tenant_id, segment_id=segment_id)
@@ -201,14 +218,20 @@ def delete_segment(segment_id: str, current: tuple[User, Tenant] = Depends(get_c
 
 
 @router.get("/segments/{segment_id}/contacts", response_model=ContactListResponse)
-def segment_contacts(segment_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> ContactListResponse:
+def segment_contacts(
+    segment_id: str,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> ContactListResponse:
     user, _ = current
     try:
         items = store.get_segment_contacts(tenant_id=user.tenant_id, segment_id=segment_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     contacts = [_contact_out(contact) for contact in items]
-    return ContactListResponse(total=len(contacts), items=contacts)
+    page = contacts[offset : offset + limit]
+    return ContactListResponse(total=len(contacts), items=page, limit=limit, offset=offset)
 
 
 @router.get("/analytics/lead-sources")
@@ -226,7 +249,7 @@ def tag_breakdown(current: tuple[User, Tenant] = Depends(get_current_user_and_te
 @router.post("/campaigns/send", response_model=CampaignSendResponse, status_code=status.HTTP_201_CREATED)
 def send_campaign(
     payload: CampaignSendRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_CAMPAIGN_ROLES)),
 ) -> CampaignSendResponse:
     user, _ = current
     campaign = store.send_campaign(
@@ -275,7 +298,7 @@ def campaign_stats(current: tuple[User, Tenant] = Depends(get_current_user_and_t
 def add_note(
     contact_id: str,
     payload: ContactNoteCreateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_SUPPORT_NOTE_ROLES)),
 ) -> ContactNoteOut:
     user, _ = current
     try:
@@ -300,7 +323,7 @@ def list_notes(contact_id: str, current: tuple[User, Tenant] = Depends(get_curre
 def update_tags(
     contact_id: str,
     payload: ContactTagsUpdateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_FORM_SEGMENT_ROLES)),
 ) -> dict:
     user, _ = current
     try:
@@ -319,7 +342,7 @@ def update_tags(
 def update_consent(
     contact_id: str,
     payload: ContactConsentUpdateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_CONSENT_ROLES)),
 ) -> dict:
     user, _ = current
     try:
@@ -337,7 +360,10 @@ def update_consent(
 
 
 @router.get("/contacts/{contact_id}/export", response_model=ContactExportResponse)
-def export_contact(contact_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> ContactExportResponse:
+def export_contact(
+    contact_id: str,
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_PRIVACY_EXPORT_ROLES)),
+) -> ContactExportResponse:
     user, _ = current
     try:
         contact = store.get_contact(tenant_id=user.tenant_id, contact_id=contact_id)
@@ -362,7 +388,10 @@ def export_contact(contact_id: str, current: tuple[User, Tenant] = Depends(get_c
 
 
 @router.delete("/contacts/{contact_id}")
-def anonymize_contact(contact_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> dict:
+def anonymize_contact(
+    contact_id: str,
+    current: tuple[User, Tenant] = Depends(require_roles(*CRM_PRIVACY_EXPORT_ROLES)),
+) -> dict:
     user, _ = current
     try:
         store.anonymize_contact(tenant_id=user.tenant_id, contact_id=contact_id, actor_user_id=user.id)

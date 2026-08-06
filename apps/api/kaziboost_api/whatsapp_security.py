@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import os
+
+from .webhook_secrets import webhook_secret
 
 
 def _secret() -> str:
-    return os.getenv("KAZIBOOST_WHATSAPP_WEBHOOK_SECRET", "dev-whatsapp-secret")
+    return webhook_secret(
+        env_var="KAZIBOOST_WHATSAPP_WEBHOOK_SECRET",
+        dev_default="dev-whatsapp-secret",
+        provider="WhatsApp",
+    )
 
 
 def build_whatsapp_signature(event_id: str, from_phone: str, message_text: str, language: str) -> str:
