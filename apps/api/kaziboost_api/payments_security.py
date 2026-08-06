@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import os
+
+from .webhook_secrets import webhook_secret
 
 
 def _secret() -> str:
-    return os.getenv("KAZIBOOST_MPESA_CALLBACK_SECRET", "dev-mpesa-secret")
+    return webhook_secret(
+        env_var="KAZIBOOST_MPESA_CALLBACK_SECRET",
+        dev_default="dev-mpesa-secret",
+        provider="M-Pesa",
+    )
 
 
 def build_mpesa_callback_signature(payment_id: str, provider_tx_id: str, status: str) -> str:

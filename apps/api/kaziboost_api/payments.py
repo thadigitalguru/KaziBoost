@@ -31,6 +31,7 @@ from .models import (
 )
 from .store import Tenant, User, store
 from .payments_security import verify_mpesa_callback_signature
+from .webhook_secrets import WebhookSecretConfigurationError
 
 
 router = APIRouter(prefix="/v1/payments", tags=["payments"])
@@ -152,7 +153,7 @@ def initiate_mpesa(
     return _payment_out(payment)
 
 
-@router.post("/mpesa/callback", response_model=MpesaCallbackResponse, responses=error_responses(400, 401, 404))
+@router.post("/mpesa/callback", response_model=MpesaCallbackResponse, responses=error_responses(400, 401, 404, 503))
 def mpesa_callback(
     payload: MpesaCallbackRequest,
     x_callback_signature: str = Header(alias="x-callback-signature"),
@@ -161,12 +162,20 @@ def mpesa_callback(
     user, _tenant = current
     if payload.status not in {"success", "failed", "pending"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment callback status")
-    if not verify_mpesa_callback_signature(
-        signature=x_callback_signature,
-        payment_id=payload.payment_id,
-        provider_tx_id=payload.provider_tx_id,
-        status=payload.status,
-    ):
+    try:
+        signature_valid = verify_mpesa_callback_signature(
+            signature=x_callback_signature,
+            payment_id=payload.payment_id,
+            provider_tx_id=payload.provider_tx_id,
+            status=payload.status,
+        )
+    except WebhookSecretConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Webhook verification is temporarily unavailable",
+        ) from exc
+
+    if not signature_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid callback signature")
 
     try:

@@ -13,3 +13,5 @@ def test_readiness_endpoint_reports_component_checks():
     assert body["status"] == "ready"
     assert body["checks"]["api"] == "ok"
     assert body["checks"]["storage"] == "ok"
+    assert body["checks"]["mpesa_webhook_secret"] == "local-default"
+    assert body["checks"]["whatsapp_webhook_secret"] == "local-default"

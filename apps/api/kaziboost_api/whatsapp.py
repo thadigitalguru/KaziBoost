@@ -20,6 +20,7 @@ from .models import (
     WhatsAppReminderRequest,
 )
 from .store import Tenant, User, store
+from .webhook_secrets import WebhookSecretConfigurationError
 from .whatsapp_security import verify_whatsapp_signature
 
 
@@ -30,6 +31,7 @@ router = APIRouter(prefix="/v1/whatsapp", tags=["whatsapp"])
     "/webhook/incoming",
     response_model=WhatsAppConversationOut,
     status_code=status.HTTP_201_CREATED,
+    responses={503: {"description": "Webhook verification is temporarily unavailable"}},
     openapi_extra={
         "requestBody": {
             "content": {
@@ -56,13 +58,21 @@ def incoming_webhook(
     x_webhook_signature: str = Header(alias="x-webhook-signature"),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppConversationOut:
-    if not verify_whatsapp_signature(
-        signature=x_webhook_signature,
-        event_id=x_event_id,
-        from_phone=payload.from_phone,
-        message_text=payload.message_text,
-        language=payload.language,
-    ):
+    try:
+        signature_valid = verify_whatsapp_signature(
+            signature=x_webhook_signature,
+            event_id=x_event_id,
+            from_phone=payload.from_phone,
+            message_text=payload.message_text,
+            language=payload.language,
+        )
+    except WebhookSecretConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Webhook verification is temporarily unavailable",
+        ) from exc
+
+    if not signature_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature")
 
     user, _tenant = current
