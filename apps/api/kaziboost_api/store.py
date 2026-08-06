@@ -13,6 +13,9 @@ from datetime import UTC, datetime, timedelta
 from .seo_persistence import SEOPersistence
 
 
+CONTACT_REDACTION_MARKER = "[redacted: contact anonymized]"
+
+
 @dataclass
 class Tenant:
     id: str
@@ -921,6 +924,12 @@ class InMemoryStore:
         ids = self.contact_notes_by_contact.get(contact_id, [])
         return [self.contact_notes[item_id] for item_id in reversed(ids)]
 
+    def _redact_contact_activity(self, contact_id: str) -> None:
+        for event_id in self.interactions_by_contact.get(contact_id, []):
+            self.interactions[event_id].message = CONTACT_REDACTION_MARKER
+        for note_id in self.contact_notes_by_contact.get(contact_id, []):
+            self.contact_notes[note_id].text = CONTACT_REDACTION_MARKER
+
     def update_contact_consent(
         self,
         tenant_id: str,
@@ -948,6 +957,7 @@ class InMemoryStore:
         contact.email = f"{contact.id}@redacted.local"
         contact.tags = []
         contact.anonymized = True
+        self._redact_contact_activity(contact_id=contact.id)
         self.record_audit_event(
             tenant_id=tenant_id,
             event_type="contact.anonymized",
