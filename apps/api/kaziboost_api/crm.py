@@ -114,6 +114,8 @@ def list_contacts(
     source: str | None = Query(default=None),
     tag: str | None = Query(default=None),
     email_marketing: bool | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> ContactListResponse:
     user, _ = current
@@ -123,8 +125,9 @@ def list_contacts(
         tag=tag,
         email_marketing=email_marketing,
     )
-    response_items = [_contact_out(contact) for contact in items]
-    return ContactListResponse(total=len(response_items), items=response_items)
+    page = items[offset : offset + limit]
+    response_items = [_contact_out(contact) for contact in page]
+    return ContactListResponse(total=len(items), items=response_items, limit=limit, offset=offset)
 
 
 @router.get("/contacts/export.csv")
@@ -215,14 +218,20 @@ def delete_segment(
 
 
 @router.get("/segments/{segment_id}/contacts", response_model=ContactListResponse)
-def segment_contacts(segment_id: str, current: tuple[User, Tenant] = Depends(get_current_user_and_tenant)) -> ContactListResponse:
+def segment_contacts(
+    segment_id: str,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
+    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+) -> ContactListResponse:
     user, _ = current
     try:
         items = store.get_segment_contacts(tenant_id=user.tenant_id, segment_id=segment_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     contacts = [_contact_out(contact) for contact in items]
-    return ContactListResponse(total=len(contacts), items=contacts)
+    page = contacts[offset : offset + limit]
+    return ContactListResponse(total=len(contacts), items=page, limit=limit, offset=offset)
 
 
 @router.get("/analytics/lead-sources")

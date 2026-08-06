@@ -213,6 +213,8 @@ def reconciliation(
     contact_id: str,
     status: str | None = Query(default=None),
     provider_tx_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_REPORT_ROLES)),
 ) -> PaymentListResponse:
     user, _tenant = current
@@ -222,7 +224,8 @@ def reconciliation(
         status=status,
         provider_tx_id=provider_tx_id,
     )
-    return PaymentListResponse(total=len(items), items=[_payment_out(item) for item in items])
+    page = items[offset : offset + limit]
+    return PaymentListResponse(total=len(items), items=[_payment_out(item) for item in page], limit=limit, offset=offset)
 
 
 @router.post("/{payment_id}/refund", response_model=RefundOut, status_code=status.HTTP_201_CREATED)
@@ -254,6 +257,8 @@ def create_refund(
 @router.get("/{payment_id}/refunds", response_model=RefundListResponse)
 def list_refunds(
     payment_id: str,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> RefundListResponse:
     user, _tenant = current
@@ -272,7 +277,8 @@ def list_refunds(
         )
         for refund in refunds
     ]
-    return RefundListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return RefundListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.get("/summary", response_model=PaymentsSummaryResponse)
@@ -295,6 +301,8 @@ def export_csv(
 @router.get("/failures", response_model=PaymentFailureListResponse)
 def failures(
     reason: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(require_roles(*PAYMENT_REPORT_ROLES)),
 ) -> PaymentFailureListResponse:
     user, _tenant = current
@@ -307,7 +315,8 @@ def failures(
         )
         for item in store.failed_payments(tenant_id=user.tenant_id, reason=reason)
     ]
-    return PaymentFailureListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return PaymentFailureListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.get("/reports/monthly", response_model=PaymentsMonthlyReportResponse)

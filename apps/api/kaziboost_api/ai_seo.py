@@ -168,6 +168,8 @@ def list_calendar_items(
     language: str | None = Query(default=None),
     on_or_after: str | None = Query(default=None),
     on_or_before: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> ContentCalendarListResponse:
     user, _tenant = current
@@ -188,7 +190,8 @@ def list_calendar_items(
             on_or_before=on_or_before,
         )
     ]
-    return ContentCalendarListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return ContentCalendarListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.patch("/calendar/items/{item_id}", response_model=ContentCalendarItemOut)
@@ -215,6 +218,8 @@ def update_calendar_item(
 @router.get("/calendar/due", response_model=ContentCalendarListResponse)
 def due_calendar_items(
     on_or_before: str,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> ContentCalendarListResponse:
     user, _tenant = current
@@ -229,7 +234,8 @@ def due_calendar_items(
         )
         for item in store.due_calendar_items(tenant_id=user.tenant_id, on_or_before=on_or_before)
     ]
-    return ContentCalendarListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return ContentCalendarListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.delete("/calendar/items/{item_id}")

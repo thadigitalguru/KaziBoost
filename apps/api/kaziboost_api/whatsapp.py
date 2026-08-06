@@ -101,6 +101,8 @@ def list_conversations(
     status: str | None = Query(default=None),
     assigned_to: str | None = Query(default=None),
     from_phone: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppConversationListResponse:
     user, _tenant = current
@@ -121,7 +123,8 @@ def list_conversations(
         )
         for item in conversations
     ]
-    return WhatsAppConversationListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return WhatsAppConversationListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.post("/faq", status_code=status.HTTP_201_CREATED)
@@ -285,6 +288,8 @@ def schedule_reminder(
 def reminder_history(
     status: str | None = Query(default=None),
     thread_id: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppReminderListResponse:
     user, _tenant = current
@@ -298,7 +303,8 @@ def reminder_history(
         )
         for item in store.list_whatsapp_reminders(tenant_id=user.tenant_id, status=status, thread_id=thread_id)
     ]
-    return WhatsAppReminderListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return WhatsAppReminderListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.patch("/reminders/{reminder_id}/sent", response_model=WhatsAppReminderOut)
@@ -322,6 +328,8 @@ def mark_reminder_sent(
 
 @router.get("/queue/overdue", response_model=WhatsAppConversationListResponse)
 def overdue_queue(
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> WhatsAppConversationListResponse:
     user, _tenant = current
@@ -336,7 +344,8 @@ def overdue_queue(
         )
         for item in store.overdue_whatsapp_queue(tenant_id=user.tenant_id)
     ]
-    return WhatsAppConversationListResponse(total=len(items), items=items)
+    page = items[offset : offset + limit]
+    return WhatsAppConversationListResponse(total=len(items), items=page, limit=limit, offset=offset)
 
 
 @router.get("/stats/sla")

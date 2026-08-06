@@ -63,6 +63,8 @@ def top_articles(
 def list_articles(
     featured: bool | None = Query(default=None),
     category: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
     current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
 ) -> TrainingArticleListResponse:
     user, _tenant = current
@@ -78,7 +80,8 @@ def list_articles(
         )
         for item in items
     ]
-    return TrainingArticleListResponse(total=len(results), items=results)
+    page = results[offset : offset + limit]
+    return TrainingArticleListResponse(total=len(results), items=page, limit=limit, offset=offset)
 
 
 @router.get("/articles/search", response_model=TrainingSearchResponse)
