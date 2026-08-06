@@ -479,7 +479,7 @@ Deferred larger efforts:
 | 2026-08-05 | Improvement 1: Escape tenant-controlled site-rendered HTML; implementation, tests, and reviews passed. | `06c4041e466debfcf42dafa9a46d1ee2b6011961` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
 | 2026-08-05 | Improvement 2: Centralized role authorization; implementation, tests, and reviews passed. | `2d39d141addea3963914b380802a69044951d84f` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
 | 2026-08-06 | Improvement 3: Production webhook secret fail-closed behavior; implementation, tests, and reviews passed. | `5cb3c3fbff22668e4cea2045885f7eef236f6e6d` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
-| 2026-08-06 | Improvement 4: Privacy redaction during anonymization; implementation, tests, and reviews passed. | pending | pending commit/push |
+| 2026-08-06 | Improvement 4: Privacy redaction during anonymization; implementation, tests, and reviews passed. | `0e7d71cf4619496807d7f5928bcb422b646a4ad1` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
 | pending | Improvement 5: Pagination and list limits. | pending | pending |
 | pending | Improvement 6: SEO indexes and readiness checks. | pending | pending |
 | pending | Improvement 7: AI governance metadata and audit events. | pending | pending |
