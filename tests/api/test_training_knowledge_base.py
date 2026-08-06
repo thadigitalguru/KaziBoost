@@ -37,5 +37,7 @@ def test_knowledge_base_article_create_and_search():
 
     search = client.get("/v1/training/articles/search?q=localized", headers=headers)
     assert search.status_code == 200
+    assert search.json()["limit"] == 20
+    assert search.json()["offset"] == 0
     assert search.json()["total"] >= 1
     assert search.json()["items"][0]["title"] == "How to improve local SEO in Nairobi"

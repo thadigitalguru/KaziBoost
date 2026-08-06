@@ -41,5 +41,7 @@ def test_top_articles_sorted_by_views_desc():
 
     top = client.get("/v1/training/articles/top", headers=headers)
     assert top.status_code == 200
+    assert top.json()["limit"] == 10
+    assert top.json()["offset"] == 0
     assert top.json()["total"] >= 2
     assert top.json()["items"][0]["id"] == a1["id"]

@@ -56,7 +56,7 @@ def top_articles(
         )
         for item in items
     ]
-    return TrainingArticleListResponse(total=len(results), items=results)
+    return TrainingArticleListResponse(total=len(results), items=results, limit=limit, offset=0)
 
 
 @router.get("/articles", response_model=TrainingArticleListResponse)
@@ -104,7 +104,7 @@ def search_articles(
         )
         for item in items
     ]
-    return TrainingSearchResponse(total=len(results), items=results)
+    return TrainingSearchResponse(total=len(results), items=results, limit=limit, offset=0)
 
 
 @router.get("/articles/{article_id}/related", response_model=TrainingArticleListResponse)
@@ -129,7 +129,7 @@ def related_articles(
         )
         for item in items
     ]
-    return TrainingArticleListResponse(total=len(results), items=results)
+    return TrainingArticleListResponse(total=len(results), items=results, limit=limit, offset=0)
 
 
 @router.get("/articles/{article_id}", response_model=TrainingArticleOut)
