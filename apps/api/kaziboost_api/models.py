@@ -391,6 +391,10 @@ class GeneratedContentOut(BaseModel):
     generation_mode: str
     safety_outcome: str
     policy_violations: list[str]
+    status: str
+    reviewed_by: str | None = None
+    reviewed_at: str | None = None
+    review_note: str | None = None
     created_at: str | None = None
 
 
@@ -412,6 +416,11 @@ class GenerateContentResponse(BaseModel):
 class ContentHistoryResponse(BaseModel):
     total: int
     items: list[GeneratedContentOut]
+
+
+class ContentReviewRequest(BaseModel):
+    status: str = Field(min_length=7, max_length=20)
+    review_note: str | None = Field(default=None, max_length=500)
 
 
 class SaveKeywordsResponse(BaseModel):
@@ -453,6 +462,7 @@ class ContentCalendarCreateRequest(BaseModel):
     keyword: str = Field(min_length=2, max_length=120)
     scheduled_for: str
     language: str = Field(default="en", min_length=2, max_length=10)
+    generated_content_id: str | None = None
 
 
 class ContentCalendarItemOut(BaseModel):
@@ -462,6 +472,7 @@ class ContentCalendarItemOut(BaseModel):
     scheduled_for: str
     language: str
     status: str
+    generated_content_id: str | None = None
 
 
 class ContentCalendarListResponse(BaseModel):

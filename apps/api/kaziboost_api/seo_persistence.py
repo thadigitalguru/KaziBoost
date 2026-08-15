@@ -24,6 +24,10 @@ class SEOPersistence:
             "generation_mode": "TEXT NOT NULL DEFAULT 'deterministic_template'",
             "safety_outcome": "TEXT NOT NULL DEFAULT 'safe'",
             "policy_violations": "TEXT NOT NULL DEFAULT '[]'",
+            "status": "TEXT NOT NULL DEFAULT 'needs_review'",
+            "reviewed_by": "TEXT",
+            "reviewed_at": "TEXT",
+            "review_note": "TEXT",
         }
         for column, definition in additions.items():
             if column not in columns:
@@ -65,6 +69,10 @@ class SEOPersistence:
                   generation_mode TEXT NOT NULL DEFAULT 'deterministic_template',
                   safety_outcome TEXT NOT NULL DEFAULT 'safe',
                   policy_violations TEXT NOT NULL DEFAULT '[]',
+                  status TEXT NOT NULL DEFAULT 'needs_review',
+                  reviewed_by TEXT,
+                  reviewed_at TEXT,
+                  review_note TEXT,
                   created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )
                 """
@@ -125,8 +133,9 @@ class SEOPersistence:
                 INSERT INTO seo_generated_content (
                   id, tenant_id, keyword, content_type, tone, language, length,
                   title, meta_title, meta_description, body, related_terms,
-                  prompt_version, generation_mode, safety_outcome, policy_violations
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  prompt_version, generation_mode, safety_outcome, policy_violations,
+                  status, reviewed_by, reviewed_at, review_note
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     content["id"],
@@ -145,36 +154,74 @@ class SEOPersistence:
                     content["generation_mode"],
                     content["safety_outcome"],
                     json.dumps(content["policy_violations"]),
+                    content.get("status", "needs_review"),
+                    content.get("reviewed_by"),
+                    content.get("reviewed_at"),
+                    content.get("review_note"),
                 ),
             )
 
-    def list_generated_content(self, tenant_id: str, limit: int = 20, language: str | None = None) -> list[dict[str, object]]:
+    def update_generated_content_review(
+        self,
+        tenant_id: str,
+        content_id: str,
+        review_status: str,
+        reviewed_by: str,
+        reviewed_at: str,
+        review_note: str | None,
+    ) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE seo_generated_content
+                SET status = ?, reviewed_by = ?, reviewed_at = ?, review_note = ?
+                WHERE tenant_id = ? AND id = ?
+                """,
+                (review_status, reviewed_by, reviewed_at, review_note, tenant_id, content_id),
+            )
+        return cursor.rowcount == 1
+
+    def get_generated_content(self, tenant_id: str, content_id: str) -> dict[str, object] | None:
+        items = self.list_generated_content(tenant_id=tenant_id, limit=1, content_id=content_id)
+        return items[0] if items else None
+
+    def list_generated_content(
+        self,
+        tenant_id: str,
+        limit: int = 20,
+        language: str | None = None,
+        content_id: str | None = None,
+    ) -> list[dict[str, object]]:
         with self._connect() as conn:
             if language:
                 rows = conn.execute(
                     """
                     SELECT id, keyword, content_type, tone, language, length, title,
                            meta_title, meta_description, body, related_terms,
-                           prompt_version, generation_mode, safety_outcome, policy_violations, created_at
+                           prompt_version, generation_mode, safety_outcome, policy_violations,
+                           status, reviewed_by, reviewed_at, review_note, created_at
                     FROM seo_generated_content
                     WHERE tenant_id = ? AND language = ?
+                      AND (? IS NULL OR id = ?)
                     ORDER BY created_at DESC
                     LIMIT ?
                     """,
-                    (tenant_id, language, limit),
+                    (tenant_id, language, content_id, content_id, limit),
                 ).fetchall()
             else:
                 rows = conn.execute(
                     """
                     SELECT id, keyword, content_type, tone, language, length, title,
                            meta_title, meta_description, body, related_terms,
-                           prompt_version, generation_mode, safety_outcome, policy_violations, created_at
+                           prompt_version, generation_mode, safety_outcome, policy_violations,
+                           status, reviewed_by, reviewed_at, review_note, created_at
                     FROM seo_generated_content
                     WHERE tenant_id = ?
+                      AND (? IS NULL OR id = ?)
                     ORDER BY created_at DESC
                     LIMIT ?
                     """,
-                    (tenant_id, limit),
+                    (tenant_id, content_id, content_id, limit),
                 ).fetchall()
 
         return [
@@ -194,6 +241,10 @@ class SEOPersistence:
                 "generation_mode": row["generation_mode"],
                 "safety_outcome": row["safety_outcome"],
                 "policy_violations": json.loads(row["policy_violations"]),
+                "status": row["status"],
+                "reviewed_by": row["reviewed_by"],
+                "reviewed_at": row["reviewed_at"],
+                "review_note": row["review_note"],
                 "created_at": row["created_at"],
             }
             for row in rows

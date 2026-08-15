@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from .auth import get_current_user_and_tenant
+from .auth import SITE_CONTENT_ROLES, get_current_user_and_tenant, require_roles
 from .contracts import error_responses
 from .models import (
     ContentCalendarCreateRequest,
@@ -8,7 +8,9 @@ from .models import (
     ContentCalendarListResponse,
     ContentCalendarStatusUpdateRequest,
     ContentHistoryResponse,
+    ContentReviewRequest,
     GenerateContentRequest,
+    GeneratedContentOut,
     GenerateContentResponse,
     KeywordItem,
     KeywordSuggestRequest,
@@ -159,19 +161,53 @@ def content_history(
     return ContentHistoryResponse(total=len(items), items=items)
 
 
+@router.patch("/content/{content_id}/review", response_model=GeneratedContentOut)
+def review_content(
+    content_id: str,
+    payload: ContentReviewRequest,
+    current: tuple[User, Tenant] = Depends(require_roles(*SITE_CONTENT_ROLES)),
+) -> GeneratedContentOut:
+    user, _tenant = current
+    try:
+        content = store.update_generated_content_review(
+            tenant_id=user.tenant_id,
+            content_id=content_id,
+            review_status=payload.status,
+            reviewed_by=user.id,
+            review_note=payload.review_note,
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        code = status.HTTP_404_NOT_FOUND if "not found" in detail.lower() else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=code, detail=detail) from exc
+    store.record_audit_event(
+        tenant_id=user.tenant_id,
+        event_type=f"seo.content.{payload.status}",
+        entity_type="seo_content",
+        entity_id=content_id,
+        actor_user_id=user.id,
+        metadata={"review_note": payload.review_note or ""},
+    )
+    return GeneratedContentOut(**content)
+
+
 @router.post("/calendar/items", response_model=ContentCalendarItemOut, status_code=status.HTTP_201_CREATED)
 def create_calendar_item(
     payload: ContentCalendarCreateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*SITE_CONTENT_ROLES)),
 ) -> ContentCalendarItemOut:
     user, _tenant = current
-    item = store.create_content_calendar_item(
-        tenant_id=user.tenant_id,
-        title=payload.title,
-        keyword=payload.keyword,
-        scheduled_for=payload.scheduled_for,
-        language=payload.language,
-    )
+    try:
+        item = store.create_content_calendar_item(
+            tenant_id=user.tenant_id,
+            title=payload.title,
+            keyword=payload.keyword,
+            scheduled_for=payload.scheduled_for,
+            language=payload.language,
+            generated_content_id=payload.generated_content_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return ContentCalendarItemOut(
         id=item.id,
         title=item.title,
@@ -179,6 +215,7 @@ def create_calendar_item(
         scheduled_for=item.scheduled_for,
         language=item.language,
         status=item.status,
+        generated_content_id=item.generated_content_id,
     )
 
 
@@ -201,6 +238,7 @@ def list_calendar_items(
             scheduled_for=item.scheduled_for,
             language=item.language,
             status=item.status,
+            generated_content_id=item.generated_content_id,
         )
         for item in store.list_content_calendar_items(
             tenant_id=user.tenant_id,
@@ -218,7 +256,7 @@ def list_calendar_items(
 def update_calendar_item(
     item_id: str,
     payload: ContentCalendarStatusUpdateRequest,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*SITE_CONTENT_ROLES)),
 ) -> ContentCalendarItemOut:
     user, _tenant = current
     try:
@@ -232,6 +270,7 @@ def update_calendar_item(
         scheduled_for=item.scheduled_for,
         language=item.language,
         status=item.status,
+        generated_content_id=item.generated_content_id,
     )
 
 
@@ -251,6 +290,7 @@ def due_calendar_items(
             scheduled_for=item.scheduled_for,
             language=item.language,
             status=item.status,
+            generated_content_id=item.generated_content_id,
         )
         for item in store.due_calendar_items(tenant_id=user.tenant_id, on_or_before=on_or_before)
     ]
@@ -261,7 +301,7 @@ def due_calendar_items(
 @router.delete("/calendar/items/{item_id}")
 def delete_calendar_item(
     item_id: str,
-    current: tuple[User, Tenant] = Depends(get_current_user_and_tenant),
+    current: tuple[User, Tenant] = Depends(require_roles(*SITE_CONTENT_ROLES)),
 ) -> dict:
     user, _tenant = current
     try:
