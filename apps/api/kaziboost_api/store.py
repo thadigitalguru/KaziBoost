@@ -1108,7 +1108,7 @@ class InMemoryStore:
             raise ValueError("FAQ not found")
         return items.pop(faq_index)
 
-    def whatsapp_bot_reply(self, tenant_id: str, thread_id: str) -> dict[str, str]:
+    def whatsapp_bot_reply(self, tenant_id: str, thread_id: str, actor_user_id: str | None = None) -> dict[str, str]:
         conversation = self.whatsapp_conversations.get(thread_id)
         if not conversation or conversation.tenant_id != tenant_id:
             raise ValueError("Conversation not found")
@@ -1118,13 +1118,31 @@ class InMemoryStore:
         for faq in faq_items:
             question = faq["question"].lower()
             if any(token in question for token in message.split() if len(token) > 3):
-                return {"mode": "bot", "reply_text": faq["answer"], "thread_id": thread_id}
+                reply = {"mode": "bot", "reply_text": faq["answer"], "thread_id": thread_id}
+                self.record_audit_event(
+                    tenant_id=tenant_id,
+                    event_type="whatsapp.bot.replied",
+                    entity_type="whatsapp_conversation",
+                    entity_id=thread_id,
+                    actor_user_id=actor_user_id,
+                    metadata={"mode": reply["mode"]},
+                )
+                return reply
 
-        return {
+        reply = {
             "mode": "handoff_required",
             "reply_text": "I need a human teammate to help with this request.",
             "thread_id": thread_id,
         }
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="whatsapp.bot.replied",
+            entity_type="whatsapp_conversation",
+            entity_id=thread_id,
+            actor_user_id=actor_user_id,
+            metadata={"mode": reply["mode"]},
+        )
+        return reply
 
     def whatsapp_handoff(self, tenant_id: str, thread_id: str, assigned_to: str) -> WhatsAppConversation:
         conversation = self.whatsapp_conversations.get(thread_id)
@@ -1432,6 +1450,10 @@ class InMemoryStore:
     ) -> dict[str, object]:
         keyword_clean = keyword.strip()
         related_terms = [f"{keyword_clean} price", f"{keyword_clean} near me", f"{keyword_clean} tips"]
+        prompt_version = "seo-deterministic-v1"
+        generation_mode = "deterministic_template"
+        safety_outcome = "safe"
+        policy_violations: list[str] = []
 
         if language == "sw":
             title = f"Mwongozo wa {keyword_clean} kwa Biashara za Kenya"
@@ -1466,6 +1488,10 @@ class InMemoryStore:
             "meta_description": meta_description,
             "body": body,
             "related_terms": related_terms,
+            "prompt_version": prompt_version,
+            "generation_mode": generation_mode,
+            "safety_outcome": safety_outcome,
+            "policy_violations": policy_violations,
         }
         self.seo_persistence.save_generated_content(content)
         return content

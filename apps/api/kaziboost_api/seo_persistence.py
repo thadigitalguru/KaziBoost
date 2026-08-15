@@ -17,6 +17,22 @@ class SEOPersistence:
         conn.row_factory = sqlite3.Row
         return conn
 
+    def _ensure_generated_content_columns(self, conn: sqlite3.Connection) -> None:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info('seo_generated_content')")}
+        additions = {
+            "prompt_version": "TEXT NOT NULL DEFAULT 'seo-deterministic-v1'",
+            "generation_mode": "TEXT NOT NULL DEFAULT 'deterministic_template'",
+            "safety_outcome": "TEXT NOT NULL DEFAULT 'safe'",
+            "policy_violations": "TEXT NOT NULL DEFAULT '[]'",
+        }
+        for column, definition in additions.items():
+            if column not in columns:
+                try:
+                    conn.execute(f"ALTER TABLE seo_generated_content ADD COLUMN {column} {definition}")
+                except sqlite3.OperationalError as exc:
+                    if "duplicate column name" not in str(exc).lower():
+                        raise
+
     def _init_schema(self) -> None:
         with self._connect() as conn:
             conn.execute(
@@ -45,10 +61,15 @@ class SEOPersistence:
                   meta_description TEXT NOT NULL,
                   body TEXT NOT NULL,
                   related_terms TEXT NOT NULL,
+                  prompt_version TEXT NOT NULL DEFAULT 'seo-deterministic-v1',
+                  generation_mode TEXT NOT NULL DEFAULT 'deterministic_template',
+                  safety_outcome TEXT NOT NULL DEFAULT 'safe',
+                  policy_violations TEXT NOT NULL DEFAULT '[]',
                   created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )
                 """
             )
+            self._ensure_generated_content_columns(conn)
             conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_seo_generated_content_tenant_created
@@ -103,8 +124,9 @@ class SEOPersistence:
                 """
                 INSERT INTO seo_generated_content (
                   id, tenant_id, keyword, content_type, tone, language, length,
-                  title, meta_title, meta_description, body, related_terms
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  title, meta_title, meta_description, body, related_terms,
+                  prompt_version, generation_mode, safety_outcome, policy_violations
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     content["id"],
@@ -119,6 +141,10 @@ class SEOPersistence:
                     content["meta_description"],
                     content["body"],
                     json.dumps(content["related_terms"]),
+                    content["prompt_version"],
+                    content["generation_mode"],
+                    content["safety_outcome"],
+                    json.dumps(content["policy_violations"]),
                 ),
             )
 
@@ -128,7 +154,8 @@ class SEOPersistence:
                 rows = conn.execute(
                     """
                     SELECT id, keyword, content_type, tone, language, length, title,
-                           meta_title, meta_description, body, related_terms, created_at
+                           meta_title, meta_description, body, related_terms,
+                           prompt_version, generation_mode, safety_outcome, policy_violations, created_at
                     FROM seo_generated_content
                     WHERE tenant_id = ? AND language = ?
                     ORDER BY created_at DESC
@@ -140,7 +167,8 @@ class SEOPersistence:
                 rows = conn.execute(
                     """
                     SELECT id, keyword, content_type, tone, language, length, title,
-                           meta_title, meta_description, body, related_terms, created_at
+                           meta_title, meta_description, body, related_terms,
+                           prompt_version, generation_mode, safety_outcome, policy_violations, created_at
                     FROM seo_generated_content
                     WHERE tenant_id = ?
                     ORDER BY created_at DESC
@@ -162,6 +190,10 @@ class SEOPersistence:
                 "meta_description": row["meta_description"],
                 "body": row["body"],
                 "related_terms": json.loads(row["related_terms"]),
+                "prompt_version": row["prompt_version"],
+                "generation_mode": row["generation_mode"],
+                "safety_outcome": row["safety_outcome"],
+                "policy_violations": json.loads(row["policy_violations"]),
                 "created_at": row["created_at"],
             }
             for row in rows

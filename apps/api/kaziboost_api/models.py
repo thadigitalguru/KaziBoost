@@ -375,7 +375,27 @@ class GenerateContentRequest(BaseModel):
     length: str = Field(default="medium", min_length=2, max_length=20)
 
 
+class GeneratedContentOut(BaseModel):
+    id: str
+    keyword: str
+    content_type: str
+    tone: str
+    language: str
+    length: str
+    title: str
+    meta_title: str
+    meta_description: str
+    body: str
+    related_terms: list[str]
+    prompt_version: str
+    generation_mode: str
+    safety_outcome: str
+    policy_violations: list[str]
+    created_at: str | None = None
+
+
 class GenerateContentResponse(BaseModel):
+    id: str
     keyword: str
     language: str
     title: str
@@ -383,6 +403,15 @@ class GenerateContentResponse(BaseModel):
     meta_description: str
     body: str
     related_terms: list[str]
+    prompt_version: str
+    generation_mode: str
+    safety_outcome: str
+    policy_violations: list[str]
+
+
+class ContentHistoryResponse(BaseModel):
+    total: int
+    items: list[GeneratedContentOut]
 
 
 class SaveKeywordsResponse(BaseModel):
@@ -399,11 +428,6 @@ class KeywordWorkspaceItem(BaseModel):
 class KeywordWorkspaceListResponse(BaseModel):
     total: int
     items: list[KeywordWorkspaceItem]
-
-
-class ContentHistoryResponse(BaseModel):
-    total: int
-    items: list[dict]
 
 
 class TopicMapGenerateRequest(BaseModel):

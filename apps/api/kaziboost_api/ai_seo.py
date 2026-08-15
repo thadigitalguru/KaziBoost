@@ -60,6 +60,14 @@ def generate_content(
     user, _tenant = current
     lowered = payload.keyword.lower()
     if any(term in lowered for term in UNSAFE_KEYWORD_TERMS):
+        store.record_audit_event(
+            tenant_id=user.tenant_id,
+            event_type="seo.content.blocked",
+            entity_type="seo_content",
+            entity_id=payload.keyword,
+            actor_user_id=user.id,
+            metadata={"safety_outcome": "blocked", "policy_rule": "unsafe_keyword"},
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsafe keyword policy violation")
 
     generated = store.generate_content(
@@ -69,6 +77,18 @@ def generate_content(
         tone=payload.tone,
         language=payload.language,
         length=payload.length,
+    )
+    store.record_audit_event(
+        tenant_id=user.tenant_id,
+        event_type="seo.content.generated",
+        entity_type="seo_content",
+        entity_id=generated["id"],
+        actor_user_id=user.id,
+        metadata={
+            "prompt_version": str(generated["prompt_version"]),
+            "generation_mode": str(generated["generation_mode"]),
+            "safety_outcome": str(generated["safety_outcome"]),
+        },
     )
     return GenerateContentResponse(**generated)
 

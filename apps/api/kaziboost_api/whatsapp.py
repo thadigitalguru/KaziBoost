@@ -162,7 +162,7 @@ def bot_reply(
     current: tuple[User, Tenant] = Depends(require_roles(*WHATSAPP_SERVICE_ACTION_ROLES)),
 ) -> WhatsAppBotReplyResponse:
     user, _tenant = current
-    reply = store.whatsapp_bot_reply(tenant_id=user.tenant_id, thread_id=thread_id)
+    reply = store.whatsapp_bot_reply(tenant_id=user.tenant_id, thread_id=thread_id, actor_user_id=user.id)
     return WhatsAppBotReplyResponse(**reply)
 
 

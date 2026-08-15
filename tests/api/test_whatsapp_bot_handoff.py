@@ -85,3 +85,31 @@ def test_unknown_question_triggers_handoff_and_assignment():
     assert handoff.status_code == 200
     assert handoff.json()["status"] == "handoff"
     assert handoff.json()["assigned_to"] == "support-agent-1"
+
+
+def test_bot_reply_is_audited_with_mode_metadata():
+    headers = _auth_headers("wabot3@example.com", "Audit WhatsApp Shop")
+
+    client.post(
+        "/v1/whatsapp/faq",
+        headers=headers,
+        json={"question": "What time do you open?", "answer": "We open at 8am daily."},
+    )
+
+    incoming_payload = {"from_phone": "+254700666300", "message_text": "what time do you open?", "language": "en"}
+    incoming = client.post(
+        "/v1/whatsapp/webhook/incoming",
+        headers=_webhook_headers(headers, "evt-bot-3", incoming_payload),
+        json=incoming_payload,
+    ).json()
+
+    bot = client.post(
+        f"/v1/whatsapp/conversations/{incoming['thread_id']}/reply-bot",
+        headers=headers,
+    )
+
+    assert bot.status_code == 200
+    assert bot.json()["mode"] == "bot"
+
+    events = client.get("/v1/audit/events?entity_type=whatsapp_conversation", headers=headers).json()
+    assert any(item["event_type"] == "whatsapp.bot.replied" and item["metadata"]["mode"] == "bot" for item in events["items"])
