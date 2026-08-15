@@ -485,7 +485,7 @@ Deferred larger efforts:
 | 2026-08-06 | Improvement 7: AI governance metadata and audit events; implementation, tests, and reviews passed. | `127829f757ef449c17a128fff2ef4eebac149d8e` | pending |
 | 2026-08-06 | Improvement 8: Generated-content review workflow; implementation, tests, and reviews passed. | `8431abf8eebfce0774bf3960bb9c022d394cbc34` | pending |
 | 2026-08-06 | Improvement 9: API-aware frontend UX states; typecheck, production build, and reviews passed. | `7739a812d34b0c19d69c4a00922b91646b69ee08` | pending |
-| pending | Improvement 10: CI quality/security gates. | pending | pending |
+| 2026-08-06 | Improvement 10: CI quality/security gates; API coverage, Python audit, frontend typecheck/build, and npm audit gates added and verified locally. | `bc923301a551e8f707c22e9bed029ae4c74375c9` | pending |
 
 ## 17. Remote Repository Notes
 
