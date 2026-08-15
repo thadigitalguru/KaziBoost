@@ -481,7 +481,7 @@ Deferred larger efforts:
 | 2026-08-06 | Improvement 3: Production webhook secret fail-closed behavior; implementation, tests, and reviews passed. | `5cb3c3fbff22668e4cea2045885f7eef236f6e6d` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
 | 2026-08-06 | Improvement 4: Privacy redaction during anonymization; implementation, tests, and reviews passed. | `0e7d71cf4619496807d7f5928bcb422b646a4ad1` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
 | 2026-08-06 | Improvement 5: Pagination and list limits implemented; training metadata correction also reviewed and pushed. | `9f8efde45905e3363e23dbba1ac70379134f20b8`, `afdbc3bc767c9f75c3cac934fd140aeadd973a45` | Both commits pushed to `origin/sol/kaziboost-senior-upgrade-20260805`; local, upstream, and `ls-remote` hashes match |
-| pending | Improvement 6: SEO indexes and readiness checks. | pending | pending |
+| 2026-08-06 | Improvement 6: SEO indexes and readiness checks; implementation, tests, and reviews passed. | `e25e4fac3b79f5079a6d77a417322326eec55fc1` | pending |
 | pending | Improvement 7: AI governance metadata and audit events. | pending | pending |
 | pending | Improvement 8: Generated-content review workflow. | pending | pending |
 | pending | Improvement 9: API-aware frontend UX states. | pending | pending |
