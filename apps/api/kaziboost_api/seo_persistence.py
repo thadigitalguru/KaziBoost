@@ -49,6 +49,26 @@ class SEOPersistence:
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_seo_generated_content_tenant_created
+                ON seo_generated_content (tenant_id, created_at DESC)
+                """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_seo_generated_content_tenant_language_created
+                ON seo_generated_content (tenant_id, language, created_at DESC)
+                """
+            )
+
+    def check_ready(self) -> bool:
+        try:
+            with self._connect() as conn:
+                conn.execute("SELECT 1 FROM seo_generated_content LIMIT 1").fetchone()
+        except sqlite3.Error:
+            return False
+        return True
 
     def save_keywords(self, tenant_id: str, workspace: str, keywords: list[str]) -> list[str]:
         normalized = sorted({keyword.strip() for keyword in keywords if keyword.strip()})

@@ -1,4 +1,5 @@
 from pathlib import Path
+import sqlite3
 
 from kaziboost_api.store import InMemoryStore
 
@@ -44,3 +45,16 @@ def test_generated_content_history_is_persisted_by_tenant(tmp_path: Path):
     assert len(history) >= 1
     assert history[0]["keyword"] == "vet clinic nairobi"
     assert history[0]["language"] == "en"
+
+
+def test_generated_content_query_indexes_and_readiness_are_available(tmp_path: Path):
+    db_path = tmp_path / "kaziboost-ready.db"
+
+    store = InMemoryStore(db_path=str(db_path))
+
+    assert store.storage_ready() is True
+    with sqlite3.connect(db_path) as conn:
+        indexes = {row[1] for row in conn.execute("PRAGMA index_list('seo_generated_content')")}
+
+    assert "idx_seo_generated_content_tenant_created" in indexes
+    assert "idx_seo_generated_content_tenant_language_created" in indexes

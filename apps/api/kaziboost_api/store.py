@@ -1478,6 +1478,9 @@ class InMemoryStore:
     ) -> list[dict[str, object]]:
         return self.seo_persistence.list_generated_content(tenant_id=tenant_id, limit=limit, language=language)
 
+    def storage_ready(self) -> bool:
+        return self.seo_persistence.check_ready()
+
     def generate_topic_map(self, seed_keyword: str, location: str, language: str) -> dict[str, object]:
         seed = seed_keyword.strip()
         seed_title = seed.title()

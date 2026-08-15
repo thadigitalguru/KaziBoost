@@ -57,8 +57,9 @@ def health() -> HealthResponse:
 
 @app.get("/ready", response_model=ReadinessResponse)
 def ready() -> ReadinessResponse:
-    checks = {"api": "ok", "storage": "ok", **webhook_secret_checks()}
-    ready_status = "ready" if webhook_secrets_ready() else "not_ready"
+    storage_ok = store.storage_ready()
+    checks = {"api": "ok", "storage": "ok" if storage_ok else "error", **webhook_secret_checks()}
+    ready_status = "ready" if storage_ok and webhook_secrets_ready() else "not_ready"
     return ReadinessResponse(status=ready_status, checks=checks)
 
 
