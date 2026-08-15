@@ -16,5 +16,29 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .[dev]
-      - name: Run tests
-        run: pytest
+          pip install pip-audit
+      - name: Run API tests with coverage gate
+        run: pytest --cov=kaziboost_api --cov-report=term-missing --cov-fail-under=80
+      - name: Audit Python dependencies
+        run: pip-audit
+
+  test-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Typecheck frontend
+        run: ./node_modules/.bin/tsc -p tsconfig.json --noEmit --incremental false
+      - name: Build frontend
+        run: npm run build
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
