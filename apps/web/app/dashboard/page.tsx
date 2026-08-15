@@ -1,3 +1,5 @@
+import { fetchReadiness, type Readiness } from '../../lib/api';
+
 const modules = [
   { name: 'Sites', status: 'website publish flow UI in progress', href: '/dashboard/sites' },
   { name: 'CRM', status: 'lead inbox and contact timeline in progress', href: '/dashboard/crm' },
@@ -8,7 +10,17 @@ const modules = [
   { name: 'Training', status: 'knowledge base shell in progress', href: '/dashboard/training' },
 ];
 
-export default function DashboardPage() {
+async function getReadiness(): Promise<Readiness | null> {
+  try {
+    return await fetchReadiness();
+  } catch {
+    return null;
+  }
+}
+
+export default async function DashboardPage() {
+  const readiness = await getReadiness();
+
   return (
     <main className="page-shell">
       <section className="hero compact">
@@ -20,16 +32,31 @@ export default function DashboardPage() {
         </p>
       </section>
 
+      <section className="panel" aria-live="polite">
+        <div className="inbox-row">
+          <div>
+            <h2>API readiness</h2>
+            <p>{readiness ? 'Live service status from the configured API.' : 'API status is unavailable. Configure the API URL or check the service.'}</p>
+          </div>
+          <span className={readiness?.status === 'ready' ? 'status-ok' : 'status-warning'}>
+            {readiness?.status ?? 'Unavailable'}
+          </span>
+        </div>
+        {readiness ? (
+          <ul className="checklist">
+            {Object.entries(readiness.checks).map(([name, status]) => (
+              <li key={name}><strong>{name}</strong>: {status}</li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+
       <section className="grid">
         {modules.map((item) => (
           <article key={item.name} className="card">
             <h2>{item.name}</h2>
             <p>{item.status}</p>
-            {item.href ? (
-              <a className="button secondary" href={item.href}>
-                Open
-              </a>
-            ) : null}
+            <a className="button secondary" href={item.href}>Open</a>
           </article>
         ))}
       </section>

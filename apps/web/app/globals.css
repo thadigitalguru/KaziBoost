@@ -221,6 +221,25 @@ h1 {
   white-space: nowrap;
 }
 
+.status-ok,
+.status-warning {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-ok {
+  background: #e6f7ed;
+  color: #187342;
+}
+
+.status-warning {
+  background: #fff4dc;
+  color: #8a5a00;
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;

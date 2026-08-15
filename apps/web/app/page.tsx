@@ -39,8 +39,8 @@ export default function HomePage() {
           <a className="button primary" href="/dashboard">
             Open dashboard
           </a>
-          <a className="button secondary" href="http://localhost:8000/health" target="_blank" rel="noreferrer">
-            Check API health
+          <a className="button secondary" href="/dashboard">
+            View live status
           </a>
         </div>
       </section>
