@@ -491,6 +491,7 @@ Deferred larger efforts:
 | 2026-08-16 | Senior AI execution Build 2 identity increment: versioned PBKDF2 password hashing, legacy verification, automatic rehash, and security regression tests. | `bf1b930008c2c8c79555e2de4c6e9ef27db21cf2` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
 | 2026-08-16 | Selected next five builds after infrastructure counter-review: identity repository, idempotency ledger, provider-neutral AI runtime, AI evaluation harness, and authenticated frontend client. | `2b49b3fdf2b14e555af9b315ddd69cc8be73d5b3` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
 | 2026-08-16 | Next-five Build 1: durable identity SQLite adapter with tenant/user/session/MFA schema and restart/isolation tests. Adapter intentionally remains a repository seam pending application wiring and migration configuration. | `e7abc596155bd3e56f0d6c4ae00d6fa898206655` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
+| 2026-08-16 | Next-five Build 2: durable tenant/namespace/idempotency-key ledger with new/replay/conflict outcomes and replay response storage. Provider wiring remains a follow-up. | `672afedcd6a3477372bd344589e55e2438b4b2f4` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
 
 ## 17. Remote Repository Notes
 
