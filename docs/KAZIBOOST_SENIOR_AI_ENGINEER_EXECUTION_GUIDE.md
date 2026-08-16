@@ -205,7 +205,7 @@ Secondary: time-to-publish, lead qualification rate, median response time, payme
 
 ## 7. Current execution status
 
-Build 0 is the first execution step. Its evidence is recorded in `docs/KAZIBOOST_BASELINE_REPORT_20260816.md`. Build 1 is next and must not begin until Build 0 is committed, pushed, and the remote hash is verified.
+Build 0 is complete and pushed as `bca6683`. Build 1 is complete and pushed as `30c5b4f`: the generated-content vertical slice now depends on a tenant-scoped repository contract and adapter, with contract tests for isolation and review lifecycle. Build 2 is next: durable identity and tenant foundation. The Build 2 design must begin with schema and migration contracts, not a blind in-memory rewrite.
 
 ## 8. Required evidence per build
 

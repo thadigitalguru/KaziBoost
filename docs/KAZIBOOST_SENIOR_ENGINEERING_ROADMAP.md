@@ -486,7 +486,8 @@ Deferred larger efforts:
 | 2026-08-06 | Improvement 8: Generated-content review workflow; implementation, tests, and reviews passed. | `8431abf8eebfce0774bf3960bb9c022d394cbc34` | pending |
 | 2026-08-06 | Improvement 9: API-aware frontend UX states; typecheck, production build, and reviews passed. | `7739a812d34b0c19d69c4a00922b91646b69ee08` | pending |
 | 2026-08-06 | Improvement 10: CI quality/security gates; API coverage, Python audit, frontend typecheck/build, and npm audit gates added and verified locally. | `bc923301a551e8f707c22e9bed029ae4c74375c9` | pending |
-| 2026-08-16 | Senior AI execution Build 0: baseline report, launch-scope lock, data inventory, agent allocation, counter-analysis, and gated build plan created. | pending | pending |
+| 2026-08-16 | Senior AI execution Build 0: baseline report, launch-scope lock, data inventory, agent allocation, counter-analysis, and gated build plan created. | `bca6683ec4954e9b4ca4e5eceb103b48ed93fe69` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
+| 2026-08-16 | Senior AI execution Build 1: tenant-scoped generated-content repository protocol/adapter and contract tests added; focused and full API suites passed. | `30c5b4fbf12a81bb239f93b5836f66398b1a7600` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
 
 ## 17. Remote Repository Notes
 
