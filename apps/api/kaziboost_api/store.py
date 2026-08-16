@@ -10,6 +10,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from .repositories import GeneratedContentRepository, SEOGeneratedContentRepository
 from .seo_persistence import SEOPersistence
 
 
@@ -258,6 +259,7 @@ class InMemoryStore:
         self.seo_calendar: dict[str, ContentCalendarItem] = {}
         self.seo_calendar_by_tenant: dict[str, list[str]] = {}
         self.seo_persistence = SEOPersistence(db_path=db_path)
+        self.generated_content_repository: GeneratedContentRepository = SEOGeneratedContentRepository(self.seo_persistence)
 
         self.whatsapp_conversations: dict[str, WhatsAppConversation] = {}
         self.whatsapp_by_tenant: dict[str, list[str]] = {}
@@ -1498,7 +1500,7 @@ class InMemoryStore:
             "reviewed_at": None,
             "review_note": None,
         }
-        self.seo_persistence.save_generated_content(content)
+        self.generated_content_repository.save(content)
         return content
 
     def get_generated_content_history(
@@ -1507,7 +1509,7 @@ class InMemoryStore:
         limit: int = 20,
         language: str | None = None,
     ) -> list[dict[str, object]]:
-        return self.seo_persistence.list_generated_content(tenant_id=tenant_id, limit=limit, language=language)
+        return self.generated_content_repository.list(tenant_id=tenant_id, limit=limit, language=language)
 
     def storage_ready(self) -> bool:
         return self.seo_persistence.check_ready()
@@ -1520,7 +1522,7 @@ class InMemoryStore:
         reviewed_by: str,
         review_note: str | None = None,
     ) -> dict[str, object]:
-        content = self.seo_persistence.get_generated_content(tenant_id=tenant_id, content_id=content_id)
+        content = self.generated_content_repository.get(tenant_id=tenant_id, record_id=content_id)
         if not content:
             raise ValueError("Generated content not found")
         current_status = str(content["status"])
@@ -1532,15 +1534,15 @@ class InMemoryStore:
         if review_status not in allowed or review_status not in allowed[current_status]:
             raise ValueError("Invalid generated-content review transition")
         reviewed_at = self._now_iso()
-        self.seo_persistence.update_generated_content_review(
+        self.generated_content_repository.update_review(
             tenant_id=tenant_id,
-            content_id=content_id,
-            review_status=review_status,
+            record_id=content_id,
+            status=review_status,
             reviewed_by=reviewed_by,
             reviewed_at=reviewed_at,
             review_note=review_note,
         )
-        updated = self.seo_persistence.get_generated_content(tenant_id=tenant_id, content_id=content_id)
+        updated = self.generated_content_repository.get(tenant_id=tenant_id, record_id=content_id)
         assert updated is not None
         return updated
 
@@ -1584,7 +1586,7 @@ class InMemoryStore:
         generated_content_id: str | None = None,
     ) -> ContentCalendarItem:
         if generated_content_id:
-            content = self.seo_persistence.get_generated_content(tenant_id=tenant_id, content_id=generated_content_id)
+            content = self.generated_content_repository.get(tenant_id=tenant_id, record_id=generated_content_id)
             if not content:
                 raise ValueError("Generated content not found")
             initial_status = "draft" if content["status"] != "approved" else "scheduled"
@@ -1632,7 +1634,7 @@ class InMemoryStore:
         if status not in {"draft", "scheduled", "published", "cancelled"}:
             raise ValueError("Invalid calendar status")
         if status in {"scheduled", "published"} and item.generated_content_id:
-            content = self.seo_persistence.get_generated_content(tenant_id=tenant_id, content_id=item.generated_content_id)
+            content = self.generated_content_repository.get(tenant_id=tenant_id, record_id=item.generated_content_id)
             if not content:
                 raise ValueError("Generated content not found")
             if content["status"] != "approved":

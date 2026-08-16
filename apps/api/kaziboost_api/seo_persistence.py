@@ -196,7 +196,7 @@ class SEOPersistence:
             if language:
                 rows = conn.execute(
                     """
-                    SELECT id, keyword, content_type, tone, language, length, title,
+                    SELECT id, tenant_id, keyword, content_type, tone, language, length, title,
                            meta_title, meta_description, body, related_terms,
                            prompt_version, generation_mode, safety_outcome, policy_violations,
                            status, reviewed_by, reviewed_at, review_note, created_at
@@ -211,7 +211,7 @@ class SEOPersistence:
             else:
                 rows = conn.execute(
                     """
-                    SELECT id, keyword, content_type, tone, language, length, title,
+                    SELECT id, tenant_id, keyword, content_type, tone, language, length, title,
                            meta_title, meta_description, body, related_terms,
                            prompt_version, generation_mode, safety_outcome, policy_violations,
                            status, reviewed_by, reviewed_at, review_note, created_at
@@ -227,6 +227,7 @@ class SEOPersistence:
         return [
             {
                 "id": row["id"],
+                "tenant_id": row["tenant_id"],
                 "keyword": row["keyword"],
                 "content_type": row["content_type"],
                 "tone": row["tone"],
