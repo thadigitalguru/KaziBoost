@@ -213,7 +213,7 @@ These are the next five gated builds selected after reviewing the current branch
 
 1. **Identity repository foundation:** define durable tenant/user/session/MFA schema contracts and a SQLite adapter with tenant and restart contract tests. This is a seam, not a claim that SQLite is the final production database. **Complete:** `e7abc59`.
 2. **Idempotency ledger:** define a tenant-scoped idempotency record for provider event IDs and client retry keys, with duplicate/replay/expiry behavior tests. Apply it first to payment callbacks and WhatsApp events. **Complete:** `672afed` (ledger contract/adapter; provider wiring remains a follow-up).
-3. **Provider-neutral AI runtime:** add provider/capability/safety interfaces, bounded request state, typed results, explicit failure states, and deterministic fallback without live provider calls.
+3. **Provider-neutral AI runtime:** add provider/capability/safety interfaces, bounded request state, typed results, explicit failure states, and deterministic fallback without live provider calls. **Complete:** `b8246ba`.
 4. **AI evaluation harness:** add versioned fixture cases for English/Swahili, grounding, injection, PII, unsafe claims, schema validity, and handoff; make evaluation output comparable by capability and policy version.
 5. **Authenticated frontend client:** add typed login/session/API error contracts and a truthful authenticated dashboard entry path, without pretending static module shells are live data.
 

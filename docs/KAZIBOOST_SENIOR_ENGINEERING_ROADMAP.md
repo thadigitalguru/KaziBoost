@@ -492,6 +492,7 @@ Deferred larger efforts:
 | 2026-08-16 | Selected next five builds after infrastructure counter-review: identity repository, idempotency ledger, provider-neutral AI runtime, AI evaluation harness, and authenticated frontend client. | `2b49b3fdf2b14e555af9b315ddd69cc8be73d5b3` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
 | 2026-08-16 | Next-five Build 1: durable identity SQLite adapter with tenant/user/session/MFA schema and restart/isolation tests. Adapter intentionally remains a repository seam pending application wiring and migration configuration. | `e7abc596155bd3e56f0d6c4ae00d6fa898206655` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
 | 2026-08-16 | Next-five Build 2: durable tenant/namespace/idempotency-key ledger with new/replay/conflict outcomes and replay response storage. Provider wiring remains a follow-up. | `672afedcd6a3477372bd344589e55e2438b4b2f4` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
+| 2026-08-16 | Next-five Build 3: provider-neutral AI runtime with model allow-list, safety decisions, typed validation, explicit failure states, metadata, and deterministic fallback. No live provider added. | `b8246ba156167ced44c00e69ab7d71535d13c581` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
 
 ## 17. Remote Repository Notes
 
