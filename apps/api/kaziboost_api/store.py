@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import hashlib
 import io
 import os
 import re
@@ -10,6 +9,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from .passwords import hash_password, needs_rehash, verify_password
 from .repositories import GeneratedContentRepository, SEOGeneratedContentRepository
 from .seo_persistence import SEOPersistence
 
@@ -288,10 +288,6 @@ class InMemoryStore:
         }
 
     @staticmethod
-    def _hash_password(password: str, salt: str) -> str:
-        return hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
-
-    @staticmethod
     def _password_is_strong(password: str) -> bool:
         return bool(
             len(password) >= 10
@@ -351,15 +347,14 @@ class InMemoryStore:
             raise ValueError("Password must include upper/lowercase letters, number, symbol, and be at least 10 chars")
 
         tenant = Tenant(id=str(uuid.uuid4()), name=business_name)
-        salt = secrets.token_hex(8)
         user = User(
             id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             owner_name=owner_name,
             email=normalized_email,
             role="owner",
-            password_hash=self._hash_password(password, salt),
-            password_salt=salt,
+            password_hash=hash_password(password),
+            password_salt="",
         )
         self.tenants[tenant.id] = tenant
         self.users_by_id[user.id] = user
@@ -383,15 +378,14 @@ class InMemoryStore:
         if not self._password_is_strong(password):
             raise ValueError("Password must include upper/lowercase letters, number, symbol, and be at least 10 chars")
 
-        salt = secrets.token_hex(8)
         user = User(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
             owner_name=owner_name,
             email=normalized_email,
             role=role,
-            password_hash=self._hash_password(password, salt),
-            password_salt=salt,
+            password_hash=hash_password(password),
+            password_salt="",
         )
         self.users_by_id[user.id] = user
         self.users_by_email[user.email] = user
@@ -429,13 +423,16 @@ class InMemoryStore:
             raise PermissionError("Too many failed login attempts. Try again later.")
 
         user = self.users_by_email.get(normalized_email)
-        if not user or user.password_hash != self._hash_password(password, user.password_salt):
+        if not user or not verify_password(password, user.password_hash, legacy_salt=user.password_salt):
             failure = self.login_failures.setdefault(normalized_email, {"count": 0, "blocked_until": None})
             failure["count"] = int(failure["count"]) + 1
             if int(failure["count"]) >= 5:
                 failure["blocked_until"] = datetime.now(tz=UTC) + timedelta(minutes=self.login_block_minutes)
             return None
 
+        if needs_rehash(user.password_hash):
+            user.password_hash = hash_password(password)
+            user.password_salt = ""
         self.login_failures.pop(normalized_email, None)
         self.metrics["auth_logins_total"] += 1
         tenant = self.tenants[user.tenant_id]
