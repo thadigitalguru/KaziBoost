@@ -36,8 +36,11 @@ export default function HomePage() {
         </p>
 
         <div className="cta-row">
-          <a className="button primary" href="/dashboard">
-            Open dashboard
+          <a className="button primary" href="/login">
+            Sign in
+          </a>
+          <a className="button secondary" href="/dashboard">
+            Preview dashboard
           </a>
           <a className="button secondary" href="/dashboard">
             View live status
