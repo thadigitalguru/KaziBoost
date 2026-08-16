@@ -207,6 +207,18 @@ Secondary: time-to-publish, lead qualification rate, median response time, payme
 
 Build 0 is complete and pushed as `bca6683`. Build 1 is complete and pushed as `30c5b4f`: the generated-content vertical slice now depends on a tenant-scoped repository contract and adapter, with contract tests for isolation and review lifecycle. Build 2 identity increment is complete and pushed as `bf1b930`: password storage now uses versioned PBKDF2 hashes, verifies legacy hashes, and automatically rehashes on successful login. The remaining Build 2 work is durable sessions/MFA and a tested database migration boundary; it must begin with schema contracts, not a blind in-memory rewrite.
 
+## 9. Next five execution builds
+
+These are the next five gated builds selected after reviewing the current branch and counter-testing the plan against available infrastructure:
+
+1. **Identity repository foundation:** define durable tenant/user/session/MFA schema contracts and a SQLite adapter with tenant and restart contract tests. This is a seam, not a claim that SQLite is the final production database.
+2. **Idempotency ledger:** define a tenant-scoped idempotency record for provider event IDs and client retry keys, with duplicate/replay/expiry behavior tests. Apply it first to payment callbacks and WhatsApp events.
+3. **Provider-neutral AI runtime:** add provider/capability/safety interfaces, bounded request state, typed results, explicit failure states, and deterministic fallback without live provider calls.
+4. **AI evaluation harness:** add versioned fixture cases for English/Swahili, grounding, injection, PII, unsafe claims, schema validity, and handoff; make evaluation output comparable by capability and policy version.
+5. **Authenticated frontend client:** add typed login/session/API error contracts and a truthful authenticated dashboard entry path, without pretending static module shells are live data.
+
+The order is intentional: identity and retry safety precede AI execution, evaluation precedes model enablement, and frontend authentication follows stable API contracts. A PostgreSQL migration and live LLM provider remain later builds requiring disposable infrastructure and explicit configuration.
+
 ## 8. Required evidence per build
 
 Each roadmap update must include:
