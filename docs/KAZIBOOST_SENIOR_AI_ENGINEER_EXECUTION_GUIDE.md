@@ -205,7 +205,7 @@ Secondary: time-to-publish, lead qualification rate, median response time, payme
 
 ## 7. Current execution status
 
-Build 0 is complete and pushed as `bca6683`. Build 1 is complete and pushed as `30c5b4f`: the generated-content vertical slice now depends on a tenant-scoped repository contract and adapter, with contract tests for isolation and review lifecycle. Build 2 is next: durable identity and tenant foundation. The Build 2 design must begin with schema and migration contracts, not a blind in-memory rewrite.
+Build 0 is complete and pushed as `bca6683`. Build 1 is complete and pushed as `30c5b4f`: the generated-content vertical slice now depends on a tenant-scoped repository contract and adapter, with contract tests for isolation and review lifecycle. Build 2 identity increment is complete and pushed as `bf1b930`: password storage now uses versioned PBKDF2 hashes, verifies legacy hashes, and automatically rehashes on successful login. The remaining Build 2 work is durable sessions/MFA and a tested database migration boundary; it must begin with schema contracts, not a blind in-memory rewrite.
 
 ## 8. Required evidence per build
 
