@@ -489,7 +489,8 @@ Deferred larger efforts:
 | 2026-08-16 | Senior AI execution Build 0: baseline report, launch-scope lock, data inventory, agent allocation, counter-analysis, and gated build plan created. | `bca6683ec4954e9b4ca4e5eceb103b48ed93fe69` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
 | 2026-08-16 | Senior AI execution Build 1: tenant-scoped generated-content repository protocol/adapter and contract tests added; focused and full API suites passed. | `30c5b4fbf12a81bb239f93b5836f66398b1a7600` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
 | 2026-08-16 | Senior AI execution Build 2 identity increment: versioned PBKDF2 password hashing, legacy verification, automatic rehash, and security regression tests. | `bf1b930008c2c8c79555e2de4c6e9ef27db21cf2` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
-| 2026-08-16 | Selected next five builds after infrastructure counter-review: identity repository, idempotency ledger, provider-neutral AI runtime, AI evaluation harness, and authenticated frontend client. | pending | pending |
+| 2026-08-16 | Selected next five builds after infrastructure counter-review: identity repository, idempotency ledger, provider-neutral AI runtime, AI evaluation harness, and authenticated frontend client. | `2b49b3fdf2b14e555af9b315ddd69cc8be73d5b3` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
+| 2026-08-16 | Next-five Build 1: durable identity SQLite adapter with tenant/user/session/MFA schema and restart/isolation tests. Adapter intentionally remains a repository seam pending application wiring and migration configuration. | `e7abc596155bd3e56f0d6c4ae00d6fa898206655` | Pushed to `origin/sol/kaziboost-senior-upgrade-20260805` |
 
 ## 17. Remote Repository Notes
 
