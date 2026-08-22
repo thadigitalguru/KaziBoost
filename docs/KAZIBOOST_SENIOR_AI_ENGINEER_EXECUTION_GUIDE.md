@@ -1,7 +1,7 @@
 # KaziBoost Senior AI Engineer Execution Guide
 
 Prepared: 2026-08-16  
-Branch: `sol/kaziboost-senior-upgrade-20260805`  
+Branch: `sol/kaziboost-20260805`  
 Source: Senior AI Engineer Execution Plan supplied on 2026-08-16
 
 ## 1. Executive decision

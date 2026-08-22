@@ -1,7 +1,7 @@
 # KaziBoost Baseline Report
 
 Date: 2026-08-16  
-Branch: `sol/kaziboost-senior-upgrade-20260805`  
+Branch: `sol/kaziboost-20260805`  
 HEAD at capture: `2c1cf15` before Build 0 documentation commit
 
 ## Reproduction commands
