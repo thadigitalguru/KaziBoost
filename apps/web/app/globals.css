@@ -173,6 +173,18 @@ h1 {
   font-weight: 600;
 }
 
+.auth-actions {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.auth-error {
+  margin: 0;
+  max-width: 320px;
+  text-align: right;
+}
+
 .pill-list,
 .checklist {
   display: grid;
@@ -230,6 +242,10 @@ h1 {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.hero-header {
+  align-items: center;
 }
 
 .inbox-row p {

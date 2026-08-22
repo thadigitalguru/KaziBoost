@@ -1,4 +1,8 @@
+import { redirect } from 'next/navigation';
+
 import { fetchReadiness, type Readiness } from '../../lib/api';
+import LogoutButton from './logout-button';
+import { getCurrentAuthSession } from '../../lib/auth-session';
 
 const modules = [
   { name: 'Sites', status: 'website publish flow UI in progress', href: '/dashboard/sites' },
@@ -19,16 +23,25 @@ async function getReadiness(): Promise<Readiness | null> {
 }
 
 export default async function DashboardPage() {
-  const readiness = await getReadiness();
+  const [readiness, session] = await Promise.all([getReadiness(), getCurrentAuthSession()]);
+
+  if (!session) {
+    redirect('/login');
+  }
 
   return (
     <main className="page-shell">
       <section className="hero compact">
-        <p className="eyebrow">Dashboard</p>
-        <h1>Operational overview</h1>
+        <div className="inbox-row hero-header">
+          <div>
+            <p className="eyebrow">Dashboard</p>
+            <h1>Operational overview</h1>
+          </div>
+          <LogoutButton />
+        </div>
         <p className="lede">
-          This shell is ready for the first end-to-end customer journey: site publish,
-          lead capture, WhatsApp follow-up, and analytics visibility.
+          Welcome back, {session.user.owner_name}. This shell is ready for the first end-to-end customer journey:
+          site publish, lead capture, WhatsApp follow-up, and analytics visibility.
         </p>
       </section>
 
