@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "next dev",
+    "typecheck": "tsc -p tsconfig.json --noEmit --incremental false",
     "build": "next build",
     "start": "next start"
   },
