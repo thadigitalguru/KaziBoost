@@ -60,3 +60,23 @@ def test_evaluation_harness_reports_unsafe_claim_failure():
 
     assert report.passed == 0
     assert report.failures[0].violations == ("forbidden:guaranteed cure",)
+
+
+def test_evaluation_harness_allows_truthy_and_falsy_non_string_required_values():
+    cases = [
+        EvaluationCase(
+            case_id="bool-field",
+            capability="lead_classification",
+            language="en",
+            input_context={},
+            required_fields=("approved", "count", "items"),
+        ),
+    ]
+
+    report = evaluate_cases(
+        cases,
+        lambda _case: result({"approved": False, "count": 0, "items": []}),
+    )
+
+    assert report.passed == 1
+    assert report.failures == ()

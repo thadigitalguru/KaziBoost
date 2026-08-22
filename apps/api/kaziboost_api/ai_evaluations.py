@@ -50,7 +50,12 @@ def evaluate_case(case: EvaluationCase, result: AiResult) -> EvaluationFailure |
 
     output = result.output or {}
     for field in case.required_fields:
-        if field not in output or output[field] in (None, ""):
+        if field not in output:
+            violations.append(f"missing:{field}")
+            continue
+
+        value = output[field]
+        if value is None or (isinstance(value, str) and value == ""):
             violations.append(f"missing:{field}")
 
     serialized = json.dumps(output, ensure_ascii=False).lower()

@@ -13,6 +13,8 @@ export type AuthSession = {
   tenant: { id: string; name: string };
 };
 
+export type AuthSessionResponse = Omit<AuthSession, 'access_token'>;
+
 export class ApiClientError extends Error {
   readonly status: number;
   readonly code: string;
@@ -33,13 +35,13 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export async function login(email: string, password: string): Promise<AuthSession> {
+export async function login(email: string, password: string): Promise<AuthSessionResponse> {
   const response = await fetch('/api/auth/login', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  return parseResponse<AuthSession>(response);
+  return parseResponse<AuthSessionResponse>(response);
 }
 
 export async function logout(): Promise<void> {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const apiBaseUrl = (process.env.KAZIBOOST_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
+const apiBaseUrl = (process.env.KAZIBOOST_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
 
 export async function POST(request: Request) {
   let payload: { email?: string; password?: string };
@@ -31,8 +31,15 @@ export async function POST(request: Request) {
     return NextResponse.json(body, { status: upstream.status });
   }
 
-  const response = NextResponse.json(body);
-  response.cookies.set('kaziboost_access_token', body.access_token, {
+  const responseBody = { ...body } as Record<string, unknown>;
+  const accessToken = responseBody.access_token;
+  if (typeof accessToken !== 'string' || accessToken.length === 0) {
+    return NextResponse.json({ detail: 'Authentication service returned an invalid response.', code: 'upstream_invalid_response' }, { status: 502 });
+  }
+  delete responseBody.access_token;
+
+  const response = NextResponse.json(responseBody);
+  response.cookies.set('kaziboost_access_token', accessToken, {
     httpOnly: true,
     sameSite: 'strict',
     secure: process.env.NODE_ENV === 'production',
