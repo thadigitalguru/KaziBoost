@@ -92,12 +92,32 @@ class SEOPersistence:
             )
 
     def check_ready(self) -> bool:
+        required_indexes = {
+            "idx_seo_generated_content_tenant_created",
+            "idx_seo_generated_content_tenant_language_created",
+        }
+        required_tables = {"seo_saved_keywords", "seo_generated_content"}
+
         try:
             with self._connect() as conn:
-                conn.execute("SELECT 1 FROM seo_generated_content LIMIT 1").fetchone()
+                quick_check = conn.execute("PRAGMA quick_check").fetchone()
+                if not quick_check or quick_check[0] != "ok":
+                    return False
+
+                tables = {
+                    row[0]
+                    for row in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('seo_saved_keywords', 'seo_generated_content')"
+                    ).fetchall()
+                }
+                if tables != required_tables:
+                    return False
+
+                indexes = {row[1] for row in conn.execute("PRAGMA index_list('seo_generated_content')").fetchall()}
         except sqlite3.Error:
             return False
-        return True
+
+        return required_indexes.issubset(indexes)
 
     def save_keywords(self, tenant_id: str, workspace: str, keywords: list[str]) -> list[str]:
         normalized = sorted({keyword.strip() for keyword in keywords if keyword.strip()})

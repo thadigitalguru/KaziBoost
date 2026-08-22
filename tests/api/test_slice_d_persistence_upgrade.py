@@ -58,3 +58,13 @@ def test_generated_content_query_indexes_and_readiness_are_available(tmp_path: P
 
     assert "idx_seo_generated_content_tenant_created" in indexes
     assert "idx_seo_generated_content_tenant_language_created" in indexes
+
+
+def test_storage_readiness_fails_when_expected_index_is_missing(tmp_path: Path):
+    db_path = tmp_path / "kaziboost-ready-fails.db"
+
+    store = InMemoryStore(db_path=str(db_path))
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("DROP INDEX idx_seo_generated_content_tenant_language_created")
+
+    assert store.storage_ready() is False
