@@ -481,7 +481,7 @@ Deferred larger efforts:
 | 2026-08-06 | Improvement 3: Production webhook secret fail-closed behavior; implementation, tests, and reviews passed. | `5cb3c3fbff22668e4cea2045885f7eef236f6e6d` | Pushed to `origin/sol/kaziboost-20260805`; local, upstream, and `ls-remote` hashes match |
 | 2026-08-06 | Improvement 4: Privacy redaction during anonymization; implementation, tests, and reviews passed. | `0e7d71cf4619496807d7f5928bcb422b646a4ad1` | Pushed to `origin/sol/kaziboost-20260805`; local, upstream, and `ls-remote` hashes match |
 | 2026-08-06 | Improvement 5: Pagination and list limits implemented; training metadata correction also reviewed and pushed. | `9f8efde45905e3363e23dbba1ac70379134f20b8`, `afdbc3bc767c9f75c3cac934fd140aeadd973a45` | Both commits pushed to `origin/sol/kaziboost-20260805`; local, upstream, and `ls-remote` hashes match |
-| 2026-08-06 | Improvement 6: SEO indexes and readiness checks; implementation, tests, and reviews passed. | `e25e4fac3b79f5079a6d77a417322326eec55fc1` | pending |
+| 2026-08-06 | Improvement 6: SEO indexes and readiness checks; implementation, tests, and reviews passed. | `e8b86a2ad762c109c0c42f5d48d5017e2310b802` | Pushed to `origin/main`; local, upstream, and ls-remote hashes match |
 | 2026-08-06 | Improvement 7: AI governance metadata and audit events; implementation, tests, and reviews passed. | `127829f757ef449c17a128fff2ef4eebac149d8e` | pending |
 | 2026-08-06 | Improvement 8: Generated-content review workflow; implementation, tests, and reviews passed. | `8431abf8eebfce0774bf3960bb9c022d394cbc34` | pending |
 | 2026-08-06 | Improvement 9: API-aware frontend UX states; typecheck, production build, and reviews passed. | `7739a812d34b0c19d69c4a00922b91646b69ee08` | pending |
@@ -495,6 +495,7 @@ Deferred larger efforts:
 | 2026-08-16 | Next-five Build 3: provider-neutral AI runtime with model allow-list, safety decisions, typed validation, explicit failure states, metadata, and deterministic fallback. No live provider added. | `b8246ba156167ced44c00e69ab7d71535d13c581` | Pushed to `origin/sol/kaziboost-20260805` |
 | 2026-08-16 | Next-five Build 4: versioned AI evaluation harness with language/capability reporting, schema checks, forbidden-claim checks, status checks, and output budgets. | `73165bf782337ed2cbe53d34eca58dbca452bc6c` | Pushed to `origin/sol/kaziboost-20260805` |
 | 2026-08-16 | Next-five Build 5: secure frontend authentication entry with typed client errors, Next.js login/logout proxy routes, HttpOnly SameSite cookie, login UX states, and route smoke test. | `5bfbe893367e80541f239b141c976c197fba2407` | Pushed to `origin/sol/kaziboost-20260805` |
+| 2026-08-16 | Follow-up build: strengthened SEO storage readiness probe to require schema integrity and expected indexes, with a regression test for missing index failure. | `e8b86a2ad762c109c0c42f5d48d5017e2310b802` | Pushed to `origin/main`; local, upstream, and ls-remote hashes match |
 
 ## 17. Remote Repository Notes
 
