@@ -12,6 +12,7 @@ const modules = [
   { name: 'Analytics', status: 'reporting overview and scheduling in progress', href: '/dashboard/analytics' },
   { name: 'SEO', status: 'calendar and content workflow UI in progress', href: '/dashboard/seo' },
   { name: 'Training', status: 'knowledge base shell in progress', href: '/dashboard/training' },
+  { name: 'Settings', status: 'tenant controls and operational preferences', href: '/dashboard/settings' },
 ];
 
 async function getReadiness(): Promise<Readiness | null> {

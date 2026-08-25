@@ -361,6 +361,31 @@ class InMemoryStore:
         self.users_by_email[user.email] = user
         return tenant, user
 
+    def update_tenant_profile(
+        self,
+        tenant_id: str,
+        user_id: str,
+        business_name: str,
+        owner_name: str,
+        actor_user_id: str | None = None,
+    ) -> tuple[Tenant, User]:
+        tenant = self.tenants.get(tenant_id)
+        user = self.users_by_id.get(user_id)
+        if not tenant or not user or user.tenant_id != tenant_id:
+            raise ValueError("Tenant not found")
+
+        tenant.name = business_name
+        user.owner_name = owner_name
+        self.record_audit_event(
+            tenant_id=tenant_id,
+            event_type="tenant.profile.updated",
+            entity_type="tenant",
+            entity_id=tenant_id,
+            actor_user_id=actor_user_id,
+            metadata={"business_name": business_name, "owner_name": owner_name},
+        )
+        return tenant, user
+
     def create_teammate(
         self,
         tenant_id: str,

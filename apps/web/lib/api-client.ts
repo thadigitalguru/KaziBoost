@@ -15,6 +15,16 @@ export type AuthSession = {
 
 export type AuthSessionResponse = Omit<AuthSession, 'access_token'>;
 
+export type TenantSettingsProfile = {
+  tenant: { id: string; name: string };
+  user: AuthUser;
+};
+
+export type TenantSettingsUpdate = {
+  business_name: string;
+  owner_name: string;
+};
+
 export class ApiClientError extends Error {
   readonly status: number;
   readonly code: string;
@@ -47,4 +57,18 @@ export async function login(email: string, password: string): Promise<AuthSessio
 export async function logout(): Promise<void> {
   const response = await fetch('/api/auth/logout', { method: 'POST' });
   await parseResponse<{ status: string }>(response);
+}
+
+export async function fetchSettingsProfile(): Promise<TenantSettingsProfile> {
+  const response = await fetch('/api/settings/profile', { cache: 'no-store' });
+  return parseResponse<TenantSettingsProfile>(response);
+}
+
+export async function updateSettingsProfile(payload: TenantSettingsUpdate): Promise<TenantSettingsProfile> {
+  const response = await fetch('/api/settings/profile', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseResponse<TenantSettingsProfile>(response);
 }

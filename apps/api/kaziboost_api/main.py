@@ -7,6 +7,7 @@ from .ai_seo import router as ai_seo_router
 from .analytics import router as analytics_router
 from .audit import router as audit_router
 from .auth import router as auth_router
+from .settings import router as settings_router
 from .crm import router as crm_router
 from .errors import http_exception_handler, validation_exception_handler
 from .models import HealthResponse, ReadinessResponse
@@ -29,6 +30,7 @@ app.include_router(analytics_router)
 app.include_router(audit_router)
 app.include_router(onboarding_router)
 app.include_router(training_router)
+app.include_router(settings_router)
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)

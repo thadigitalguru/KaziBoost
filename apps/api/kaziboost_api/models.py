@@ -64,6 +64,16 @@ class SignUpResponse(BaseModel):
     tenant: TenantOut
 
 
+class TenantSettingsRequest(BaseModel):
+    business_name: str = Field(min_length=2, max_length=120)
+    owner_name: str = Field(min_length=2, max_length=120)
+
+
+class TenantSettingsResponse(BaseModel):
+    tenant: TenantOut
+    user: UserOut
+
+
 class MFAEnrollResponse(BaseModel):
     enabled: bool
     secret: str
