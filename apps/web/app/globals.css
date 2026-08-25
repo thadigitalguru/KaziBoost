@@ -142,7 +142,8 @@ h1 {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   padding: 14px 16px;
   border: 1px solid var(--border);
@@ -150,6 +151,7 @@ h1 {
   background: #fff;
   color: var(--text);
   font: inherit;
+  resize: vertical;
 }
 
 .auth-form {
@@ -157,8 +159,13 @@ h1 {
   margin-top: 22px;
 }
 
-.settings-form {
+.settings-form,
+.feedback-form {
   margin-top: 0;
+}
+
+.feedback-form {
+  align-content: start;
 }
 
 .auth-form .button {

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { fetchReadiness, type Readiness } from '../../lib/api';
 import { fetchDashboardSummary } from '../../lib/dashboard-data';
+import FeedbackForm from './feedback-form';
 import LogoutButton from './logout-button';
 import { getCurrentAuthSession } from '../../lib/auth-session';
 
@@ -104,6 +105,21 @@ export default async function DashboardPage() {
               </ul>
             </>
           ) : null}
+        </article>
+      </section>
+
+      <section className="grid two-up">
+        <FeedbackForm />
+        <article className="card">
+          <h2>Usability refinements</h2>
+          <p>
+            Use this dashboard to spot the next bottleneck. If a task feels unclear, send feedback and we will tighten the flow.
+          </p>
+          <ul className="pill-list">
+            <li>Shorten steps that need repeated context.</li>
+            <li>Keep the next best action visible.</li>
+            <li>Prefer truthful loading and empty states.</li>
+          </ul>
         </article>
       </section>
 

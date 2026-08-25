@@ -74,6 +74,16 @@ class TenantSettingsResponse(BaseModel):
     user: UserOut
 
 
+class SupportFeedbackRequest(BaseModel):
+    page: str = Field(min_length=1, max_length=120)
+    message: str = Field(min_length=10, max_length=1000)
+
+
+class SupportFeedbackResponse(BaseModel):
+    status: str
+    feedback_id: str
+
+
 class MFAEnrollResponse(BaseModel):
     enabled: bool
     secret: str

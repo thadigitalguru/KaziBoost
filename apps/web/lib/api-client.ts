@@ -25,6 +25,16 @@ export type TenantSettingsUpdate = {
   owner_name: string;
 };
 
+export type SupportFeedback = {
+  status: string;
+  feedback_id: string;
+};
+
+export type SupportFeedbackInput = {
+  page: string;
+  message: string;
+};
+
 export class ApiClientError extends Error {
   readonly status: number;
   readonly code: string;
@@ -71,4 +81,13 @@ export async function updateSettingsProfile(payload: TenantSettingsUpdate): Prom
     body: JSON.stringify(payload),
   });
   return parseResponse<TenantSettingsProfile>(response);
+}
+
+export async function submitFeedback(payload: SupportFeedbackInput): Promise<SupportFeedback> {
+  const response = await fetch('/api/support/feedback', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseResponse<SupportFeedback>(response);
 }
