@@ -9,6 +9,8 @@ The dashboard reads the public readiness endpoint from `KAZIBOOST_API_URL` (serv
 ## Included
 - Marketing home page
 - Dashboard shell
+- Dashboard onboarding progress and feedback capture
+- Operational settings and tenant controls
 - Website publish flow UI
 - CRM lead inbox and detail view
 - WhatsApp conversation workspace

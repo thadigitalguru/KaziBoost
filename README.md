@@ -21,7 +21,9 @@ AI-powered local business growth platform for Kenyan SMEs.
 - Site deletion, CRM contact detail, campaign subject filters, SEO calendar date filters, analytics connector deletion
 - Site page listing, CRM segment detail, payment provider filters, analytics connector filters, training related articles
 - Site page detail, CRM segment contact counts, reconciliation summary, SEO workspace rename, training article duplication
-- Web dashboard shell with sites, CRM, WhatsApp, payments, analytics, SEO, and training routes
+- Web dashboard shell with sites, CRM, WhatsApp, payments, analytics, SEO, training, and settings routes
+- Tenant controls and onboarding data now surface in the authenticated dashboard
+- In-app usability feedback capture is available from the dashboard
 - Tests-first workflow established
 
 ## Quickstart

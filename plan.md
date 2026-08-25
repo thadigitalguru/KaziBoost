@@ -40,7 +40,8 @@
 - [x] CRM + WhatsApp build set (CRM lead inbox/detail view, WhatsApp conversation workspace)
 - [x] Analytics build set (analytics overview with scheduled reports)
 - [x] Next build set (training knowledge base shell, payment reconciliation and checkout UI, SEO calendar and content workflow UI)
-- [ ] Upcoming build set (operational settings and tenant controls, dashboard data fetching, onboarding polish)
+- [x] Upcoming build set (operational settings and tenant controls, dashboard data fetching, onboarding polish)
+- [ ] Next product polish set (field feedback and usability refinements, onboarding homepage journey)
 
 ---
 
