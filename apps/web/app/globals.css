@@ -257,6 +257,30 @@ h1 {
   align-items: center;
 }
 
+.progress-track {
+  overflow: hidden;
+  height: 10px;
+  margin: 18px 0 14px;
+  border-radius: 999px;
+  background: #edf2fb;
+}
+
+.progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), #7fa7ff);
+}
+
+.next-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .inbox-row p {
   margin: 4px 0 0;
 }

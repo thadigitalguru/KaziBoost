@@ -79,13 +79,23 @@ export default async function DashboardPage() {
           </div>
           {summary ? (
             <>
+              <div className="progress-track" aria-hidden="true">
+                <span
+                  className="progress-fill"
+                  style={{ width: `${Math.round((summary.checklist.completed / summary.checklist.total) * 100)}%` }}
+                />
+              </div>
+              <div className="next-step">
+                <strong>{summary.recommendations[0]?.title ?? 'You are fully onboarded.'}</strong>
+                {summary.recommendations[0] ? <a className="button secondary" href={summary.recommendations[0].action}>Open next step</a> : null}
+              </div>
               <ul className="checklist">
                 {Object.entries(summary.checklist.items).map(([name, status]) => (
                   <li key={name}><strong>{name}</strong>: {status ? 'done' : 'todo'}</li>
                 ))}
               </ul>
               <ul className="checklist">
-                {summary.recommendations.map((item) => (
+                {summary.recommendations.slice(1).map((item) => (
                   <li key={item.key}>
                     <strong>{item.title}</strong>
                     <div><a href={item.action}>Open next step</a></div>
