@@ -24,6 +24,12 @@ const nextBuilds = [
   'Field feedback and usability refinements',
 ];
 
+const quickStart = [
+  'Sign in and confirm your tenant profile.',
+  'Capture a lead and publish the first customer journey.',
+  'Review onboarding progress, then tighten the next step.',
+];
+
 export default function HomePage() {
   return (
     <main className="page-shell">
@@ -42,10 +48,19 @@ export default function HomePage() {
           <a className="button secondary" href="/dashboard">
             Preview dashboard
           </a>
-          <a className="button secondary" href="/dashboard">
-            View live status
+          <a className="button secondary" href="/dashboard/settings">
+            Open settings
           </a>
         </div>
+      </section>
+
+      <section className="panel quick-start">
+        <h2>Quick start</h2>
+        <ul className="pill-list">
+          {quickStart.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
       </section>
 
       <section className="grid">
