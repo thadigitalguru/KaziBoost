@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { fetchReadiness, type Readiness } from '../../lib/api';
+import { fetchDashboardSummary } from '../../lib/dashboard-data';
 import LogoutButton from './logout-button';
 import { getCurrentAuthSession } from '../../lib/auth-session';
 
@@ -24,7 +25,7 @@ async function getReadiness(): Promise<Readiness | null> {
 }
 
 export default async function DashboardPage() {
-  const [readiness, session] = await Promise.all([getReadiness(), getCurrentAuthSession()]);
+  const [readiness, session, summary] = await Promise.all([getReadiness(), getCurrentAuthSession(), fetchDashboardSummary()]);
 
   if (!session) {
     redirect('/login');
@@ -46,23 +47,54 @@ export default async function DashboardPage() {
         </p>
       </section>
 
-      <section className="panel" aria-live="polite">
-        <div className="inbox-row">
-          <div>
-            <h2>API readiness</h2>
-            <p>{readiness ? 'Live service status from the configured API.' : 'API status is unavailable. Configure the API URL or check the service.'}</p>
+      <section className="grid two-up">
+        <article className="panel" aria-live="polite">
+          <div className="inbox-row">
+            <div>
+              <h2>API readiness</h2>
+              <p>{readiness ? 'Live service status from the configured API.' : 'API status is unavailable. Configure the API URL or check the service.'}</p>
+            </div>
+            <span className={readiness?.status === 'ready' ? 'status-ok' : 'status-warning'}>
+              {readiness?.status ?? 'Unavailable'}
+            </span>
           </div>
-          <span className={readiness?.status === 'ready' ? 'status-ok' : 'status-warning'}>
-            {readiness?.status ?? 'Unavailable'}
-          </span>
-        </div>
-        {readiness ? (
-          <ul className="checklist">
-            {Object.entries(readiness.checks).map(([name, status]) => (
-              <li key={name}><strong>{name}</strong>: {status}</li>
-            ))}
-          </ul>
-        ) : null}
+          {readiness ? (
+            <ul className="checklist">
+              {Object.entries(readiness.checks).map(([name, status]) => (
+                <li key={name}><strong>{name}</strong>: {status}</li>
+              ))}
+            </ul>
+          ) : null}
+        </article>
+
+        <article className="panel" aria-live="polite">
+          <div className="inbox-row">
+            <div>
+              <h2>Onboarding progress</h2>
+              <p>{summary ? 'Live activation checklist from your tenant data.' : 'Onboarding data is unavailable right now.'}</p>
+            </div>
+            <span className={summary && summary.checklist.completed === summary.checklist.total ? 'status-ok' : 'status-warning'}>
+              {summary ? `${summary.checklist.completed}/${summary.checklist.total}` : 'Unavailable'}
+            </span>
+          </div>
+          {summary ? (
+            <>
+              <ul className="checklist">
+                {Object.entries(summary.checklist.items).map(([name, status]) => (
+                  <li key={name}><strong>{name}</strong>: {status ? 'done' : 'todo'}</li>
+                ))}
+              </ul>
+              <ul className="checklist">
+                {summary.recommendations.map((item) => (
+                  <li key={item.key}>
+                    <strong>{item.title}</strong>
+                    <div><a href={item.action}>Open next step</a></div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </article>
       </section>
 
       <section className="grid">
